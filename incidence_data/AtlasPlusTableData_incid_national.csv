@@ -1,0 +1,24 @@
+﻿"Date Printed: Thursday, September 5, 2024 6:06:21 PM",,,,,,,,,,,,,,,
+"Title: ""Estimated HIV incidence | 2010 | 2011 | 2012 | 2013 | 2014 | 2015 | 2016 | 2017 | 2018 | 2019 | 2020 (COVID-19 Pandemic) | 2021 | 2022 | United States | All races/ethnicities | Both sexes | Ages 13 years and older | All transmission categories""""",,,,,,,,,,,,,,,
+Footnote(s): Data for 2023 and 2024 are considered preliminary (subject to a 12-month reporting delay). Inclusion of preliminary data in trend assessments is discouraged. Numbers less than 12͵ and rates and percentages based on these numbers͵ should be interpreted with caution. HIV diagnoses and PrEP data for the year 2020͵ which coincided with the onset of the COVID-19 pandemic͵ should be interpreted with caution due to the impact of the pandemic on access to HIV testing͵ PrEP prescriptions͵ and care-related services. Data by transmission category presented based on sex assigned at birth and are adjusted for missing transmission category. See Technical notes for more details on data availability and stratifications.,,,,,,,,,,,,,,,
+   Estimates with an RSE>50% are statistically unreliable and reported as data not available.,,,,,,,,,,,,,,,
+   * Estimates with an RSE of 30%–50% should be used with caution because they meet a lower standard of reliability.,,,,,,,,,,,,,,,
+   The 'Sex' column is used for either sex assigned at birth or gender identity.,,,,,,,,,,,,,,,
+   NA - Not applicable.,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,
+Indicator,Year,Geography,FIPS,Age Group,Race/Ethnicity,Sex,Transmission Category,Cases,Cases LCI,Cases UCI,RSE,Rate per 100000,Rate LCI,Rate UCI,Population
+Estimated HIV incidence,2010,United States,NA,Ages 13 years and older,All races/ethnicities,Both sexes,All transmission categories,"39,400","38,600","40,200",1,15.4,15.1,15.7,"256,389,865"
+Estimated HIV incidence,2011,United States,NA,Ages 13 years and older,All races/ethnicities,Both sexes,All transmission categories,"38,400","37,700","39,200",1,14.9,14.6,15.2,"258,662,228"
+Estimated HIV incidence,2012,United States,NA,Ages 13 years and older,All races/ethnicities,Both sexes,All transmission categories,"38,300","37,500","39,100",1.1,14.7,14.4,15,"261,022,601"
+Estimated HIV incidence,2013,United States,NA,Ages 13 years and older,All races/ethnicities,Both sexes,All transmission categories,"37,300","36,400","38,200",1.2,14.2,13.8,14.5,"263,340,316"
+Estimated HIV incidence,2014,United States,NA,Ages 13 years and older,All races/ethnicities,Both sexes,All transmission categories,"37,300","36,300","38,300",1.3,14,13.7,14.4,"265,709,949"
+Estimated HIV incidence,2015,United States,NA,Ages 13 years and older,All races/ethnicities,Both sexes,All transmission categories,"37,100","36,000","38,200",1.5,13.8,13.4,14.2,"267,974,914"
+Estimated HIV incidence,2016,United States,NA,Ages 13 years and older,All races/ethnicities,Both sexes,All transmission categories,"37,200","36,000","38,400",1.6,13.8,13.3,14.2,"270,260,540"
+Estimated HIV incidence,2017,United States,NA,Ages 13 years and older,All races/ethnicities,Both sexes,All transmission categories,"36,200","34,800","37,500",1.9,13.3,12.8,13.8,"272,395,718"
+Estimated HIV incidence,2018,United States,NA,Ages 13 years and older,All races/ethnicities,Both sexes,All transmission categories,"36,200","34,600","37,700",2.2,13.2,12.6,13.7,"274,284,600"
+Estimated HIV incidence,2019,United States,NA,Ages 13 years and older,All races/ethnicities,Both sexes,All transmission categories,"35,100","33,400","36,800",2.5,12.7,12.1,13.3,"276,063,213"
+Estimated HIV incidence,2020 (COVID-19 Pandemic),United States,NA,Ages 13 years and older,All races/ethnicities,Both sexes,All transmission categories,"34,200","32,100","36,300",3.1,12.2,11.5,13,"279,604,644"
+Estimated HIV incidence,2021,United States,NA,Ages 13 years and older,All races/ethnicities,Both sexes,All transmission categories,"32,700","30,400","34,900",3.5,11.6,10.8,12.4,"280,875,761"
+Estimated HIV incidence,2022,United States,NA,Ages 13 years and older,All races/ethnicities,Both sexes,All transmission categories,"31,800","29,200","34,400",4.1,11.3,10.3,12.2,"282,494,087"

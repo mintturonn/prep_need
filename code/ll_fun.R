@@ -2,6 +2,7 @@
        
 likelihood <- function (X_k, pnat_lgt, pmsmpr_lgt, pwsmpr_lgt, pmswpr_lgt, pmsmvs_lgt, pwsmvs_lgt, pmswvs_lgt) {
  
+  llhood <- matrix(NA, nrow(X_k), 1) 
   ##################################################################
   # reshape parameters for the model
 for (i in 1:nrow(X_k)) {
@@ -28,98 +29,105 @@ for (i in 1:nrow(X_k)) {
   strcol <- strcol+pwsmvs_lgt
   vs.msw <- X_k[i,(strcol+1):(strcol+pmswvs_lgt)]
     
-  
-  out <- pwsex_imis(pnat, pr.msm, pr.wsm, pr.msw, vs.msm, vs.wsm, vs.msw)
-  
-  msm <- as.data.frame(as.table(out$msm.inc))
-  wsm <- as.data.frame(as.table(out$wsm.inc))
-  msw <- as.data.frame(as.table(out$msw.inc))
-   
+
+   out <- pwsex_imis(pnat, pr.msm, pr.wsm, pr.msw, vs.msm, vs.wsm, vs.msw)
+
+   msm <- as.data.frame(as.table(out$msm.inc))
+   wsm <- as.data.frame(as.table(out$wsm.inc))
+   msw <- as.data.frame(as.table(out$msw.inc))
+
    colnames(msm) <- colnames(wsm) <- colnames(msw) <- c("state", "race", "age", "inc")
-  
-  msm %>%
-    left_join(asr_msm, by=c("state", "race", "age")) %>%
-    mutate(inc = 0.3*pop*inc) %>%
-    filter(!is.na(inc)) -> msm_out
-  
-  wsm %>%
-    left_join(asr_wsm, by=c("state", "race", "age")) %>%
-    mutate(inc = 0.3*pop*inc) %>%
-    filter(!is.na(inc)) -> wsm_out
-  
-  msw %>%
-    left_join(asr_msw, by=c("state", "race", "age")) %>%
-    mutate(inc = 0.3*pop*inc)  %>%
-    filter(!is.na(inc)) -> msw_out
-  
+
+   msm %>%
+     left_join(asr_msm, by=c("state", "race", "age")) %>%
+     mutate(inc = 0.3*pop*inc,
+            pop_prep = 0.3*pop) %>%
+     filter(!is.na(inc)) -> msm_out
+
+   wsm %>%
+     left_join(asr_wsm, by=c("state", "race", "age")) %>%
+     mutate(inc = 0.3*pop*inc,
+            pop_prep = 0.3*pop) %>%
+     filter(!is.na(inc)) -> wsm_out
+
+   msw %>%
+     left_join(asr_msw, by=c("state", "race", "age")) %>%
+     mutate(inc = 0.3*pop*inc,
+            pop_prep = 0.3*pop)  %>%
+     filter(!is.na(inc)) -> msw_out
+
 # State level incidence
-  rbind(msm_out, wsm_out, msw_out) %>% 
+  rbind(msm_out, wsm_out, msw_out) %>%
     group_by(state) %>%
-     summarise(pop = sum(pop),
+     summarise(pop_prep = sum(pop_prep),
                inc = sum(inc)) %>%
     ungroup() %>%
-    mutate(rate = inc/pop) -> state_out
-    
+    mutate(rate = inc/pop_prep) -> state_out
+
 # by transmission risk group (all groups, national)
   msm_out$trnsm <- "msm"
   wsm_out$trnsm <- "wsm"
   msw_out$trnsm <- "msw"
-  
-  rbind(msm_out, wsm_out, msw_out) %>% 
+
+  rbind(msm_out, wsm_out, msw_out) %>%
     group_by(trnsm) %>%
-    summarise(pop = sum(pop),
+    summarise(pop_prep = sum(pop_prep),
               inc = sum(inc)) %>%
     ungroup() %>%
-    mutate(rate = inc/pop) -> trnsm_out
-  
+    mutate(rate = inc/pop_prep) -> trnsm_out
+
 # by age (all groups, national)
-  rbind(msm_out, wsm_out, msw_out) %>% 
-    group_by(race) %>%
-    summarise(pop = sum(pop),
+  rbind(msm_out, wsm_out, msw_out) %>%
+    group_by(age) %>%
+    summarise(pop_prep = sum(pop_prep),
               inc = sum(inc)) %>%
     ungroup() %>%
-    mutate(rate = inc/pop) -> race_out
-  
+    mutate(inc_out = inc/pop_prep) %>%
+    left_join(df_incid_age, by=c("age")) %>%
+    mutate(data_inc = cases/pop_prep) -> age_out
+
 # by race/ethnicity
-  
-  
-  
+  rbind(msm_out, wsm_out, msw_out) %>%
+    group_by(race) %>%
+    summarise(pop_prep = sum(pop_prep),
+              inc = sum(inc)) %>%
+    ungroup() %>%
+    mutate(rate = inc/pop_prep) -> race_out
+
+age_ll <- NULL
+ for (j in 1:nrow(age_out)){
+   
+   betashape <- betapars(age_out$inc_out[j], age_out$inc_out[j]/10000)
+   
+   result <- tryCatch({
+     value <- log(dbeta(age_out$data_inc[j], betashape$alpha, betashape$beta))
+     # value <- log(dbinom(age_out$cases[j], age_out$pop_prep[j], age_out$inc_out[j]))
+     if (is.nan(value) || is.infinite(value)) {
+       -10^10
+     } else {
+       value
+     }
+   }, warning = function(w) {
+     -10^10
+   }, error = function(e) {
+     -10^10
+   })
+  age_ll <-  rbind(age_ll,  result )
+                   #log(dbinom(age_out$cases[j], age_out$pop[j], age_out$inc_out[j])) )
+                   #tryCatch( { log(dbinom(age_out$cases[j], age_out$pop[j], age_out$inc_out[j])) },warning= function(w) { -10^10 },error=function(e) { -10^10 })  )
+ }
+
+
+llhood[i] <- sum(age_ll)
+
 
 }  
   
-
+  return(exp(llhood))
   
 # 
 #   
-#   # years - all - WOMEN
-#   crW15to18 <- CRRW$`Rate per 100,000`[CRRW$`Age group`=='15-18']
-#   crW19to24 <- CRRW$`Rate per 100,000`[CRRW$`Age group`=='19-24']
-#   crW15to24 <- CRRW$`Rate per 100,000`[CRRW$`Age group`=='15-24']
-#   crW25to39 <- CRRW$`Rate per 100,000`[CRRW$`Age group`=='25-39']
-#   crW40to54 <- CRRW$`Rate per 100,000`[CRRW$`Age group`=='40-54']
-#   
-#   sdcrW15to18 <- CRRW$`Rate per 100,000`[CRRW$`Age group`=='15-18']*sdbase*sdmultipsht
-#   sdcrW19to24 <- CRRW$`Rate per 100,000`[CRRW$`Age group`=='19-24']*sdbase*sdmultipsht
-#   sdcrW15to24 <- CRRW$`Rate per 100,000`[CRRW$`Age group`=='15-24']*sdbase*sdmultiplng
-#   sdcrW25to39 <- CRRW$`Rate per 100,000`[CRRW$`Age group`=='25-39']*sdbase*sdmultiplng
-#   sdcrW40to54 <- CRRW$`Rate per 100,000`[CRRW$`Age group`=='40-54']*sdbase*sdmultiplng
-#   
-#   # years - all - MEN
-#   crM15to18 <- CRRM$`HS Rate per 100,000`[CRRM$`Age group`=='15-18']
-#   crM19to24 <- CRRM$`HS Rate per 100,000`[CRRM$`Age group`=='19-24']
-#   crM15to24 <- CRRM$`HS Rate per 100,000`[CRRM$`Age group`=='15-24']
-#   crM25to39 <- CRRM$`HS Rate per 100,000`[CRRM$`Age group`=='25-39']
-#   crM40to54 <- CRRM$`HS Rate per 100,000`[CRRM$`Age group`=='40-54']
-#   
-#   sdcrM15to18 <- CRRM$`HS Rate per 100,000`[CRRM$`Age group`=='15-18']*sdbase*sdmultipsht
-#   sdcrM19to24 <- CRRM$`HS Rate per 100,000`[CRRM$`Age group`=='19-24']*sdbase*sdmultipsht
-#   sdcrM15to24 <- CRRM$`HS Rate per 100,000`[CRRM$`Age group`=='15-24']*sdbase*sdmultiplng
-#   sdcrM25to39 <- CRRM$`HS Rate per 100,000`[CRRM$`Age group`=='25-39']*sdbase*sdmultiplng
-#   sdcrM40to54 <- CRRM$`HS Rate per 100,000`[CRRM$`Age group`=='40-54']*sdbase*sdmultiplng
 # 
-#   ###################################################################
-#   # Model outpus
-#   
 # out <- statefun_imis(data.matrix(Params))
 #   
 #   if (((any(any(is.nan(out$diag)==1)==TRUE) || any(any(is.nan(out$prev)==1)==TRUE))==TRUE ||

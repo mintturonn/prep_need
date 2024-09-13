@@ -1,0 +1,37 @@
+﻿"Date Printed: Tuesday, August 27, 2024 3:03:11 AM",,,,,,,,,,,,,,,
+"Title: ""Estimated HIV incidence | 2010 | 2011 | 2012 | 2013 | 2014 | 2015 | 2016 | 2017 | 2018 | 2019 | 2020 (COVID-19 Pandemic) | 2021 | 2022 | United States | All races/ethnicities | Female | Male | Ages 13 years and older | Heterosexual contact""""",,,,,,,,,,,,,,,
+Footnote(s): Data for 2023 and 2024 are considered preliminary (subject to a 12-month reporting delay). Inclusion of preliminary data in trend assessments is discouraged. Numbers less than 12͵ and rates and percentages based on these numbers͵ should be interpreted with caution. HIV diagnoses and PrEP data for the year 2020͵ which coincided with the onset of the COVID-19 pandemic͵ should be interpreted with caution due to the impact of the pandemic on access to HIV testing͵ PrEP prescriptions͵ and care-related services. Data by transmission category presented based on sex assigned at birth and are adjusted for missing transmission category. See Technical notes for more details on data availability and stratifications.,,,,,,,,,,,,,,,
+   Estimates with an RSE>50% are statistically unreliable and reported as data not available.,,,,,,,,,,,,,,,
+   * Estimates with an RSE of 30%–50% should be used with caution because they meet a lower standard of reliability.,,,,,,,,,,,,,,,
+   The 'Sex' column is used for either sex assigned at birth or gender identity.,,,,,,,,,,,,,,,
+   NA - Not applicable.,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,
+Indicator,Year,Geography,FIPS,Age Group,Race/Ethnicity,Sex,Transmission Category,Cases,Cases LCI,Cases UCI,RSE,Rate per 100000,Rate LCI,Rate UCI,Population
+Estimated HIV incidence,2010,United States,NA,Ages 13 years and older,All races/ethnicities,Female,Heterosexual contact,"6,700","6,400","7,000",2.5,Data not available,NA,NA,NA
+Estimated HIV incidence,2010,United States,NA,Ages 13 years and older,All races/ethnicities,Male,Heterosexual contact,"3,200","3,000","3,500",4.1,Data not available,NA,NA,NA
+Estimated HIV incidence,2011,United States,NA,Ages 13 years and older,All races/ethnicities,Female,Heterosexual contact,"6,400","6,000","6,700",2.7,Data not available,NA,NA,NA
+Estimated HIV incidence,2011,United States,NA,Ages 13 years and older,All races/ethnicities,Male,Heterosexual contact,"3,100","2,900","3,400",4.4,Data not available,NA,NA,NA
+Estimated HIV incidence,2012,United States,NA,Ages 13 years and older,All races/ethnicities,Female,Heterosexual contact,"6,100","5,700","6,400",3,Data not available,NA,NA,NA
+Estimated HIV incidence,2012,United States,NA,Ages 13 years and older,All races/ethnicities,Male,Heterosexual contact,"2,900","2,600","3,200",4.9,Data not available,NA,NA,NA
+Estimated HIV incidence,2013,United States,NA,Ages 13 years and older,All races/ethnicities,Female,Heterosexual contact,"5,800","5,400","6,200",3.2,Data not available,NA,NA,NA
+Estimated HIV incidence,2013,United States,NA,Ages 13 years and older,All races/ethnicities,Male,Heterosexual contact,"2,800","2,500","3,100",5.4,Data not available,NA,NA,NA
+Estimated HIV incidence,2014,United States,NA,Ages 13 years and older,All races/ethnicities,Female,Heterosexual contact,"5,600","5,200","6,000",3.5,Data not available,NA,NA,NA
+Estimated HIV incidence,2014,United States,NA,Ages 13 years and older,All races/ethnicities,Male,Heterosexual contact,"2,700","2,300","3,000",6.3,Data not available,NA,NA,NA
+Estimated HIV incidence,2015,United States,NA,Ages 13 years and older,All races/ethnicities,Female,Heterosexual contact,"5,700","5,300","6,200",3.9,Data not available,NA,NA,NA
+Estimated HIV incidence,2015,United States,NA,Ages 13 years and older,All races/ethnicities,Male,Heterosexual contact,"2,600","2,200","3,000",7.2,Data not available,NA,NA,NA
+Estimated HIV incidence,2016,United States,NA,Ages 13 years and older,All races/ethnicities,Female,Heterosexual contact,"5,700","5,200","6,100",4.3,Data not available,NA,NA,NA
+Estimated HIV incidence,2016,United States,NA,Ages 13 years and older,All races/ethnicities,Male,Heterosexual contact,"2,700","2,300","3,100",7.9,Data not available,NA,NA,NA
+Estimated HIV incidence,2017,United States,NA,Ages 13 years and older,All races/ethnicities,Female,Heterosexual contact,"5,500","5,000","6,000",4.9,Data not available,NA,NA,NA
+Estimated HIV incidence,2017,United States,NA,Ages 13 years and older,All races/ethnicities,Male,Heterosexual contact,"2,500","2,000","2,900",9.4,Data not available,NA,NA,NA
+Estimated HIV incidence,2018,United States,NA,Ages 13 years and older,All races/ethnicities,Female,Heterosexual contact,"5,400","4,800","6,000",5.4,Data not available,NA,NA,NA
+Estimated HIV incidence,2018,United States,NA,Ages 13 years and older,All races/ethnicities,Male,Heterosexual contact,"2,500","2,000","3,000",10.4,Data not available,NA,NA,NA
+Estimated HIV incidence,2019,United States,NA,Ages 13 years and older,All races/ethnicities,Female,Heterosexual contact,"5,100","4,500","5,700",6.4,Data not available,NA,NA,NA
+Estimated HIV incidence,2019,United States,NA,Ages 13 years and older,All races/ethnicities,Male,Heterosexual contact,"2,400","1,900","3,000",11.9,Data not available,NA,NA,NA
+Estimated HIV incidence,2020 (COVID-19 Pandemic),United States,NA,Ages 13 years and older,All races/ethnicities,Female,Heterosexual contact,"4,800","4,100","5,600",7.7,Data not available,NA,NA,NA
+Estimated HIV incidence,2020 (COVID-19 Pandemic),United States,NA,Ages 13 years and older,All races/ethnicities,Male,Heterosexual contact,"2,100","1,500","2,700",15.4,Data not available,NA,NA,NA
+Estimated HIV incidence,2021,United States,NA,Ages 13 years and older,All races/ethnicities,Female,Heterosexual contact,"5,100","4,300","5,900",7.9,Data not available,NA,NA,NA
+Estimated HIV incidence,2021,United States,NA,Ages 13 years and older,All races/ethnicities,Male,Heterosexual contact,"2,100","1,400","2,800",16.5,Data not available,NA,NA,NA
+Estimated HIV incidence,2022,United States,NA,Ages 13 years and older,All races/ethnicities,Female,Heterosexual contact,"4,900","4,000","5,700",9,Data not available,NA,NA,NA
+Estimated HIV incidence,2022,United States,NA,Ages 13 years and older,All races/ethnicities,Male,Heterosexual contact,"2,100","1,400","2,900",18.2,Data not available,NA,NA,NA

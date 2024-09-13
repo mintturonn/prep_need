@@ -2,7 +2,7 @@
 
 # define sample.prior to sample from the prior
 ######################################################
-sample.prior <- function (B0, pars_nat, id_beta, id_lognr, pars_state) {
+sample.prior <- function (B0, pars_nat, id_beta, id_lognr, id_unif, id_fixed, pars_state) {
 
   params0 <- array(dim = c(B0, length(pars_nat$params)), dimnames = list(NULL, pars_nat$params))
   params.msm1 <-   array(dim = c(B0, length(pars_state$state)), dimnames = list(NULL, paste0(pars_state$state, "_pr.msm") ))
@@ -19,6 +19,26 @@ sample.prior <- function (B0, pars_nat, id_beta, id_lognr, pars_state) {
   for (i in id_lnrm) {
     params0[,i] <- rlnorm(B0, as.numeric(pars_nat$shape1[i]), as.numeric(pars_nat$shape2[i]))
   }
+  
+  for (i in id_unif) {
+    params0[,i] <- runif(B0, as.numeric(pars_nat$shape1[i]), as.numeric(pars_nat$shape2[i]))
+  }
+  
+ 
+  params0[,"prep.msm2"] <- params0[,"prep.msm1"] * pars_nat$shape1[pars_nat$params=="prep.msm2"]
+  params0[,"prep.msm3"] <- params0[,"prep.msm1"] * pars_nat$shape1[pars_nat$params=="prep.msm3"]
+  params0[,"prep.msm5"] <- params0[,"prep.msm4"] * pars_nat$shape1[pars_nat$params=="prep.msm5"]
+  
+  params0[,"prep.wsm2"] <- params0[,"prep.wsm1"] * pars_nat$shape1[pars_nat$params=="prep.wsm2"]
+  params0[,"prep.wsm3"] <- params0[,"prep.wsm1"] * pars_nat$shape1[pars_nat$params=="prep.wsm3"]
+  params0[,"prep.wsm4"] <- params0[,"prep.wsm1"] * pars_nat$shape1[pars_nat$params=="prep.wsm4"]
+  params0[,"prep.wsm5"] <- params0[,"prep.wsm1"] * pars_nat$shape1[pars_nat$params=="prep.wsm5"]
+  
+  params0[,"prep.msw2"] <- params0[,"prep.msw1"] * pars_nat$shape1[pars_nat$params=="prep.msw2"]
+  params0[,"prep.msw3"] <- params0[,"prep.msw1"] * pars_nat$shape1[pars_nat$params=="prep.msw3"]
+  params0[,"prep.msw4"] <- params0[,"prep.msw1"] * pars_nat$shape1[pars_nat$params=="prep.msw4"]
+  params0[,"prep.msw5"] <- params0[,"prep.msw1"] * pars_nat$shape1[pars_nat$params=="prep.msw5"]
+
   
   for(s in 1:nrow(pars_state)){
     params.msm1[,s] <- runif(B0, pars_state$msm_prev_min[s], pars_state$msm_prev_max[s])
@@ -40,67 +60,3 @@ sample.prior <- function (B0, pars_nat, id_beta, id_lognr, pars_state) {
               params_st_msw_vs = params.msw2))
 }
 
-# define prior density
-######################################################
-prior <- function(X_k, 
-                  pars_nat, id_beta, id_lnrm, pars_state,  
-                  pmsmpr_lgt, pwsmpr_lgt, pmswpr_lgt, pmsmvs_lgt, pwsmvs_lgt, pmswvs_lgt) {
-  
-  # 
-  priord <- matrix(data=NA, nrow(X_k), ncol(X_k))
-
-  for (i in id_beta) {
-    priord[,i] <- dbeta(X_k[,i], as.numeric(pars_nat$shape1[i]), as.numeric(pars_nat$shape2[i]))
-  }
-  
-  for (i in id_lnrm) {
-    priord[,i] <- dlnorm(X_k[,i], as.numeric(pars_nat$shape1[i]), as.numeric(pars_nat$shape2[i]))
-  }
-  
-strcol <-  nrow(pars_nat)
-a <- 1
-  for (i in (strcol+1):(strcol+pmsmpr_lgt)) {
-    priord[,i] <- dunif(X_k[,i], as.numeric(pars_state$msm_prev_min[a]), as.numeric(pars_state$msm_prev_max[a]))
-    a <- a+1
-  }
-  
-strcol <-  strcol+pmsmpr_lgt
-a <- 1
-  for (i in (strcol+1):(strcol+pwsmpr_lgt)) {
-    priord[,i] <- dunif(X_k[,i], as.numeric(pars_state$wsm_prev_min[a]), as.numeric(pars_state$wsm_prev_max[a]))
-    a <- a+1
-  }
-
-strcol <-  strcol+pwsmpr_lgt
-a <- 1
-  for (i in (strcol+1):(strcol+pmswpr_lgt)) {
-    priord[,i] <- dunif(X_k[,i], as.numeric(pars_state$msw_prev_min[a]), as.numeric(pars_state$msw_prev_max[a]))
-    a <- a+1
-  }
-
-strcol <-  strcol+pmswpr_lgt
-a <- 1
-  for (i in (strcol+1):(strcol+pmsmvs_lgt)) {
-    priord[,i] <- dunif(X_k[,i], as.numeric(pars_state$msm_vsupp_min[a]), as.numeric(pars_state$msm_vsupp_max[a]))
-    a <- a+1
-  }
-
-strcol <-  strcol+pmsmvs_lgt
-a <- 1
-for (i in (strcol+1):(strcol+pwsmvs_lgt)) {
-  priord[,i] <- dunif(X_k[,i], as.numeric(pars_state$wsm_vsupp_min[a]), as.numeric(pars_state$wsm_vsupp_max[a]))
-  a <- a+1
-}
-
-strcol <-  strcol+pwsmvs_lgt
-a <- 1
-for (i in (strcol+1):(strcol+pmswvs_lgt)) {
-  priord[,i] <- dunif(X_k[,i], as.numeric(pars_state$msw_vsupp_min[a]), as.numeric(pars_state$msw_vsupp_max[a]))
-  a <- a+1
-}
-  
-
-## SHOULD NOT BE IN LOG
-priorprod <- (apply(log(priord), 1, sum))
-  return(priorprod)
-}

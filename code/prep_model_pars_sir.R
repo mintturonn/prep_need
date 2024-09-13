@@ -197,9 +197,9 @@ hiv_age_het_prev  %>%
   select(FIPS, state.x, Age.Group, prev, diag, msw) %>%
   left_join(hiv_vsuppr[hiv_vsuppr$Sex!="Female",], by = c("FIPS", "Age.Group")) %>%
   mutate(wsm_prev_min = prev * 0.9,
-         wsm_prev_max = prev * 1,1,
+         wsm_prev_max = prev * 2,
          wsm_vsupp_min = vsupp_perc *0.9,
-         wsm_vsupp_max = vsupp_perc *1.1) %>% 
+         wsm_vsupp_max = ifelse(vsupp_perc *1.1> 0.99, 0.99, vsupp_perc *1.1)) %>% 
   select(FIPS, state, Age.Group, wsm_prev_min, wsm_prev_max, wsm_vsupp_min, wsm_vsupp_max) %>%
   arrange(FIPS, Age.Group) -> pop.wsm
 
@@ -219,10 +219,10 @@ hiv_age_het_prev  %>%
   filter(!is.na(Age.Group)) %>%
   select(FIPS, state.x, Age.Group, prev, diag, wsm) %>%
   left_join(hiv_vsuppr[hiv_vsuppr$Sex!="Male",], by = c("FIPS", "Age.Group")) %>%
-  mutate(msw_prev_min = prev * 0.9,
-         msw_prev_max = prev * 1,1,
+  mutate(msw_prev_min = prev ,
+         msw_prev_max = prev * 2,
          msw_vsupp_min = vsupp_perc *0.9,
-         msw_vsupp_max = vsupp_perc *1.1) %>% 
+         msw_vsupp_max = ifelse(vsupp_perc *1.1> 0.99, 0.99, vsupp_perc *1.1)) %>% 
   select(FIPS, state, Age.Group, msw_prev_min, msw_prev_max, msw_vsupp_min, msw_vsupp_max) %>%
   arrange(FIPS, Age.Group) -> pop.msw
 
