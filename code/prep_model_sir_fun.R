@@ -56,6 +56,11 @@ pwsex_sir <- function(pnat, pr.msm, pr.wsm, pr.msw, vs.msm, vs.wsm, vs.msw) {
   return(list(msm.inc=msm.inc, wsm.inc=wsm.inc, msw.inc=msw.inc))
 }
 
+############### PWID model
+
+
+
+
 ###############IMIS version
 pwsex_imis <- function(pnat, pr.msm, pr.wsm, pr.msw, vs.msm, vs.wsm, vs.msw) {
   
