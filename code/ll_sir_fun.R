@@ -2,7 +2,7 @@
        
 likelihood <- function (sp0) {
  
-llhood <- matrix(NA, nrow(sp0$params_nat), 7) 
+llhood <- matrix(NA, nrow(sp0$params_nat), 8) 
 
 for (i in 1:nrow(sp0$params_nat)) {
 
@@ -10,6 +10,7 @@ for (i in 1:nrow(sp0$params_nat)) {
   pr.msm <- sp0$params_st_msm_pr[i,]
   pr.wsm <- sp0$params_st_wsm_pr[i,]
   pr.msw <- sp0$params_st_msw_pr[i,]
+  
   vs.msm <- sp0$params_st_msm_vs[i,]
   vs.wsm <- sp0$params_st_wsm_vs[i,]
   vs.msw <- sp0$params_st_msw_vs[i,]
@@ -18,7 +19,6 @@ for (i in 1:nrow(sp0$params_nat)) {
   pr.prep.msm <-  pr.prep[grep("msm", names(pr.prep))]
   pr.prep.wsm <-  pr.prep[grep("wsm", names(pr.prep))]
   pr.prep.msw <-  pr.prep[grep("msw", names(pr.prep))]
-    
 
    out <- pwsex_sir(pnat, pr.msm, pr.wsm, pr.msw, vs.msm, vs.wsm, vs.msw)
 
@@ -27,11 +27,24 @@ for (i in 1:nrow(sp0$params_nat)) {
    msw <- as.data.frame(as.table(out$msw.inc))
 
    colnames(msm) <- colnames(wsm) <- colnames(msw) <- c("state", "race", "age", "inc")
+   
+#################   
+   pr.pwid <- sp0$params_st_pwid_pr[i,]
+   vs.pwid <- sp0$params_st_pwid_vs[i,]
+   
+   out2 <- pwid_model(pnat, pr.pwid, vs.pwid)
+   
+   pwid_f <- as.data.frame(as.table(out2$pwid_f))
+   pwid_m <- as.data.frame(as.table(out2$pwid_m))
+   
+   colnames(pwid_f) <- colnames(pwid_m) <- c("state", "inc")
+   
+################   
 
    msm %>%
      left_join(asr_msm, by=c("state", "race", "age")) %>%
      mutate(age_prep = case_when(
-                               age == "13-24" ~ pr.prep.msm["prep.msm1"],
+                               age == "13-24" ~ (7/12)*pr.prep.msm["prep.msm1"]+(5/12)*pnat["prep.young"],
                                age == "25-34" ~ pr.prep.msm["prep.msm2"],
                                age == "35-44" ~ pr.prep.msm["prep.msm3"],
                                age == "45-54" ~ pr.prep.msm["prep.msm4"],
@@ -44,7 +57,7 @@ for (i in 1:nrow(sp0$params_nat)) {
    wsm %>%
      left_join(asr_wsm, by=c("state", "race", "age")) %>%
      mutate(age_prep = case_when(
-       age == "13-24" ~ pr.prep.wsm["prep.wsm1"],
+       age == "13-24" ~ (7/12)*pr.prep.wsm["prep.wsm1"]+(5/12)*pnat["prep.young"],
        age == "25-34" ~ pr.prep.wsm["prep.wsm2"],
        age == "35-44" ~ pr.prep.wsm["prep.wsm3"],
        age == "45-54" ~ pr.prep.wsm["prep.wsm4"],
@@ -57,7 +70,7 @@ for (i in 1:nrow(sp0$params_nat)) {
    msw %>%
      left_join(asr_msw, by=c("state", "race", "age")) %>%
      mutate(age_prep = case_when(
-       age == "13-24" ~ pr.prep.msw["prep.msw1"],
+       age == "13-24" ~ (7/12)*pr.prep.msw["prep.msw1"]+(5/12)*pnat["prep.young"],
        age == "25-34" ~ pr.prep.msw["prep.msw2"],
        age == "35-44" ~ pr.prep.msw["prep.msw3"],
        age == "45-54" ~ pr.prep.msw["prep.msw4"],
@@ -66,9 +79,35 @@ for (i in 1:nrow(sp0$params_nat)) {
        inc = age_prep*pop*inc,
        pop_prep = age_prep*pop) %>%
      filter(!is.na(inc)) -> msw_out
+   
+################  
+   
+   pwid_m %>%
+     left_join(pop.m.18_44, by=c("state")) %>%
+     mutate(
+       sex = "Male",
+       age = "All",
+       age_prep = pnat["prop.pwid.m"] * pnat["prop.pwid.m"],
+       race = "All",
+       inc = age_prep*pop*inc,
+       pop_prep = pnat["prop.pwid.m"]* pnat["prop.pwid.m"]*pop ) %>%
+     filter(!is.na(inc)) -> pwid_m_out
+   
+   pwid_f %>%
+     left_join(pop.f.18_44, by=c("state")) %>%
+     mutate(
+       sex ="Female",
+       age = "All",
+       age_prep = pnat["prop.pwid.m"] * pnat["prop.pwid.f"],
+       race = "All",
+       inc = age_prep*pop*inc,
+       pop_prep = pnat["prop.pwid.f"]* pnat["prop.pwid.f"]*pop ) %>%
+     filter(!is.na(inc)) -> pwid_f_out
+   
+################     
 
 # State level incidence
-  rbind(msm_out, wsm_out, msw_out) %>%
+  rbind(msm_out, wsm_out, msw_out, pwid_m_out, pwid_f_out) %>%
     group_by(state) %>%
      summarise(pop_prep = sum(pop_prep),
                inc = sum(inc)) %>%
@@ -79,7 +118,7 @@ for (i in 1:nrow(sp0$params_nat)) {
     filter(!is.na(data_inc))  -> state_out
   
 # State level - summarized for states without state-level data
-  rbind(msm_out, wsm_out, msw_out) %>%
+  rbind(msm_out, wsm_out, msw_out, pwid_m_out, pwid_f_out) %>%
     group_by(state) %>%
     summarise(pop_prep = sum(pop_prep),
               inc = sum(inc)) %>%
@@ -91,7 +130,7 @@ for (i in 1:nrow(sp0$params_nat)) {
     mutate(data_inc =df_incid_nat$cases_subs) -> state_no_data_out
   
 # National
-  rbind(msm_out, wsm_out, msw_out) %>%
+  rbind(msm_out, wsm_out, msw_out, pwid_m_out, pwid_f_out) %>%
     summarise(inc_out = sum(inc)) %>%
    mutate(data_inc =df_incid_nat$cases) -> nat_out
   
@@ -100,8 +139,10 @@ for (i in 1:nrow(sp0$params_nat)) {
   msm_out$trnsm <- "msm"
   wsm_out$trnsm <- "wsm"
   msw_out$trnsm <- "msw"
+  pwid_m_out$trnsm <- "pwid"
+  pwid_f_out$trnsm <- "pwid"
 
-  rbind(msm_out, wsm_out, msw_out) %>%
+  rbind(msm_out, wsm_out, msw_out, pwid_m_out, pwid_f_out) %>%
     group_by(trnsm) %>%
     summarise(pop_prep = sum(pop_prep),
               inc = sum(inc)) %>%
@@ -110,6 +151,15 @@ for (i in 1:nrow(sp0$params_nat)) {
     left_join(df_incid_trnsm, by=c("trnsm")) %>%
     mutate(data_inc = cases) %>%
     filter(!is.na(data_inc)) -> trnsm_out
+  
+  rbind(pwid_m_out, pwid_f_out) %>%
+     group_by(sex) %>%
+     summarise(pop_prep = sum(pop_prep),
+               inc = sum(inc)) %>%
+    ungroup() %>%
+    mutate(inc_out = inc/sum(inc)) %>%
+    left_join(df_incid_pwid, by=c("sex")) %>%
+    mutate(data_inc = cases)  -> pwid_out
 
 # by age (all groups, national)
   rbind(msm_out, wsm_out, msw_out) %>%
@@ -200,6 +250,16 @@ for (i in 1:nrow(sp0$params_nat)) {
   # }, warning = function(w) { -10^10 }, error = function(e) { -10^10  })
 
   age_msm_ll <-   result7 
+  
+# Prop PWID women
+ result8 <- tryCatch({
+   dprop <- pwid_out$data_inc[1]/sum(pwid_out$data_inc)
+   value0 <- betapars(pwid_out$inc_out[1], dprop/1000 )
+   result8 <-  dbeta(dprop, value0[[1]], value0[[2]], log=TRUE)
+     if (is.nan(result8) || is.infinite(result8)) {-10^10 } else { result8 }
+ }, warning = function(w) { -10^10 }, error = function(e) { -10^10  })
+  
+  pwid_ll <-   result8
 
   
   llhood[i,1] <- age_ll
@@ -209,8 +269,10 @@ for (i in 1:nrow(sp0$params_nat)) {
   llhood[i,5] <- sum(state_ll) 
   llhood[i,6] <- state_nd_ll
   llhood[i,7] <- nat_ll
+  llhood[i,8] <- pwid_ll
 
 }  
-  return(exp(rowSums(llhood)))
+  return(list(exp_ll = exp(rowSums(llhood)),
+              llm = llhood))
 }
 

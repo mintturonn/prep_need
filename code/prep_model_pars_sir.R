@@ -1,456 +1,250 @@
 
 # parameters
-pars_nat <- read_excel(here('data/params.xlsx'), sheet = 'nat_hist')
-msmpr <- read_excel(here('data/params.xlsx'), sheet = 'grey_2014')
+pars_nat <- read_excel('~/prep_need/data/params.xlsx', sheet = 'nat_hist')
+msmpr <- read_excel('~/prep_need/data/params.xlsx', sheet = 'grey_2014')
 
 id_beta <- which(pars_nat$prior_shape == "beta")
+id_gamma <- which(pars_nat$prior_shape == "gamma")
+id_nrm <- which(pars_nat$prior_shape == "normal")
 id_lnrm <- which(pars_nat$prior_shape == "log-normal")
 id_unif <- which(pars_nat$prior_shape == "uniform")
 id_fixed <- which(pars_nat$prior_shape == "fixed")
 
-# rr_re_msm <- c(0.93, 0.81, 4.6, 2.42, 1.48, 1)
-# rr_re_msw <- c(2.25, 1.25, 25.75, 5.75, 0.75, 1)
-# rr_re_wsm <- c(2.11, 1.11, 20.44, 4.11, 2.67, 1)
-
+# population MSM
 msmpr %>% 
   rename(state = State) %>%
-  select(state, prev_extract) -> msmpr
-
-## PREVALENCE
-read_csv(here("data", "hiv_prevalence_prediction.csv")) %>%
-           rename(Age.Group = age) %>%
-  filter(year == 2022) %>%
-  group_by(FIPS, state, Sex, transcat, Age.Group) %>%
-  summarize(hpr = sum(m7)) %>%
-  ungroup() -> hiv_pred
+  dplyr::select(state, prev_extract) -> msmpr
 
 
-# cdc hiv data state level by mode 
-read_excel(here("data/AtlasPlusTableData_hivprev_2019_age_state.xlsx"), skip=10) %>%
-  mutate(cases = as.numeric(gsub(",", "", Cases))) %>%
-  mutate(state = gsub("[[:punct:]]", "", Geography)) %>%
-  select(state, cases, `Transmission Category`, `Age Group`, FIPS) %>%
-  filter(`Transmission Category` == "Male-to-male sexual contact" |
-           `Transmission Category` ==   "Male-to-male sexual contact and injection drug use") %>%
-  mutate( agecat = ifelse(`Age Group` == "13-24" | `Age Group` =="25-34" | `Age Group` == "35-44", "younger", "older")) %>%
-  rename(Age.Group = `Age Group`) %>%
-  mutate(transcat = "Male-to-male sexual contact") %>%
-  select(-`Transmission Category`) %>%
-  mutate(Sex = "Male") %>%
-  left_join(hiv_pred , by = c("FIPS", "state", "Sex", "transcat", "Age.Group")) %>%
-  mutate(cases = ifelse(is.na(cases), hpr, cases)) %>%
-  filter(!is.na(cases)) %>%
-  group_by(state, Age.Group,  FIPS, agecat, Sex) %>% 
-  summarize(cases = sum(cases)) %>%
-  ungroup() %>%
-  mutate(transcat = "Male-to-male sexual contact") -> hiv_age_msm_prev 
+## PREVALENCE DATA
+# cdc hiv prealence data state level by mode 
+read_csv("~/prep_need/data/AtlasPlusTableData_hivprev_state_msm.csv", skip=10) %>%
+  filter(Year == "2022") %>%
+  mutate(
+    cases = as.numeric(gsub(",", "", Cases)),
+    state = gsub("[[:punct:]]", "", Geography),
+    trans_cat = case_when(
+      `Transmission Category` == "Male-to-male sexual contact" ~ "msm",   
+      `Transmission Category` == "Male-to-male sexual contact and injection drug use" ~ "msm",
+      `Transmission Category` == "Heterosexual contact" ~ "msw",
+      `Transmission Category` == "Injection drug use" ~ "pwid",
+      FALSE ~ NA)) %>%
+  filter(trans_cat == "msm") %>%
+  dplyr::select(state, cases, trans_cat, FIPS, Sex) %>%
+  group_by(state, FIPS, trans_cat, Sex) %>%
+  summarize(
+    cases = sum(cases)) %>%
+  ungroup()  -> hiv_msm_prev0 
 
-# this is awkward
-hiv_age_msm_prev_13_17 <- hiv_age_msm_prev_18_24 <- hiv_age_msm_prev[hiv_age_msm_prev$Age.Group=="13-24",] 
-hiv_age_msm_prev_13_17$Age.Group <- "13-17"
-hiv_age_msm_prev_18_24$Age.Group <- "18-24"
-hiv_age_msm_prev <- rbind(hiv_age_msm_prev,hiv_age_msm_prev_13_17, hiv_age_msm_prev_18_24)
-
-read_excel(here("data/AtlasPlusTableData_hivprev_2019_age_state_het.xlsx"), skip=10) %>%
-  mutate(cases = as.numeric(gsub(",", "", Cases))) %>%
-  mutate(state = gsub("[[:punct:]]", "", Geography)) %>%
-  select(state, cases, `Transmission Category`, `Age Group`, Sex, FIPS) %>%
-  filter(`Transmission Category` == "Heterosexual contact" |
-           `Transmission Category` ==   "Injection drug use")  %>%
-  mutate( agecat = ifelse(`Age Group` == "13-24" | `Age Group` =="25-34" | `Age Group` == "35-44", "younger", "older")) %>%
-  rename(Age.Group = `Age Group`) %>% 
-  rename(transcat = `Transmission Category`) %>%
-  left_join(hiv_pred , by = c("FIPS", "state", "Sex", "transcat", "Age.Group")) %>%
-  mutate(cases = ifelse(is.na(cases), hpr, cases)) %>%
-  filter(!is.na(cases)) -> hiv_age_het_prev 
-
-# this is awkward
-hiv_age_het_prev_13_17 <- hiv_age_het_prev_18_24 <- hiv_age_het_prev[hiv_age_het_prev$Age.Group=="13-24",] 
-hiv_age_het_prev_13_17$Age.Group <- "13-17"
-hiv_age_het_prev_18_24$Age.Group <- "18-24"
-hiv_age_het_prev <- rbind(hiv_age_het_prev,hiv_age_het_prev_13_17, hiv_age_het_prev_18_24)
-
-
-# read_excel(here("data/AtlasPlusTableData_hivprev_2019_state.xlsx"), skip=10) %>%
-#   mutate(cases = as.numeric(gsub(",", "", Cases))) %>%
-#   mutate(state = gsub("[[:punct:]]", "", Geography)) %>%
-#   select(state, cases, `Transmission Category`, FIPS)   -> hiv_prev
-
-
-## HIV diagnoses
-## I think this is not used ??
-read_excel(here("data/AtlasPlusTableData_hivdiag_2019_age_state_msm.xlsx"), skip=10) %>%
-  mutate(cases = as.numeric(gsub(",", "", Cases))) %>%
-  mutate(state = gsub("[[:punct:]]", "", Geography)) %>%
-  select(state, cases, `Transmission Category`, `Age Group`, FIPS) %>%
-  filter(`Transmission Category` == "Male-to-male sexual contact" |
-           `Transmission Category` ==   "Male-to-male sexual contact and injection drug use")  %>%
-  select(-`Transmission Category`) %>%
-  mutate( agecat = ifelse(`Age Group` == "13-24" | `Age Group` =="25-34" | `Age Group` == "35-44", "younger", "older")) %>%
-  rename(Age.Group = `Age Group`) %>%
-  group_by(state, Age.Group,  FIPS, agecat) %>% 
-  summarize(cases = sum(cases)) %>%
-  ungroup() %>%
-  mutate(transcat = "Male-to-male sexual contact") -> hiv_age_msm_diag 
-
-# this is awkward
-hiv_age_msm_diag_13_17 <- hiv_age_msm_diag_18_24 <- hiv_age_msm_diag[hiv_age_msm_diag$Age.Group=="13-24",] 
-hiv_age_msm_diag_13_17$Age.Group <- "13-17"
-hiv_age_msm_diag_18_24$Age.Group <- "18-24"
-hiv_age_msm_diag <- rbind(hiv_age_msm_diag,hiv_age_msm_diag_13_17, hiv_age_msm_diag_18_24)
+ read_csv("~/prep_need/data/AtlasPlusTableData_hivprev_state_phet.csv", skip=10) %>%
+    filter(Year == "2022") %>%
+    mutate(
+      cases = as.numeric(gsub(",", "", Cases)),
+      state = gsub("[[:punct:]]", "", Geography) ) %>%
+    dplyr::select(state, cases, `Transmission Category`, `Age Group`, Sex, FIPS) %>%
+    rename(
+      Age.Group = `Age Group`,
+      trans_cat = `Transmission Category`) %>%
+   mutate(
+      trans_cat = case_when(
+        trans_cat == "Heterosexual contact" & Sex=="Male" ~ "msw",
+        trans_cat == "Heterosexual contact" & Sex=="Female" ~ "wsm",
+        FALSE ~ trans_cat), 
+      cases = case_when(
+        state == "New Hampshire" & is.na(cases) & Sex == "Female" ~ 
+          1385 * sum(cases[state == "Vermont" & Sex == "Female"]) / 
+          (sum(hiv_msm_prev0$cases[hiv_msm_prev0$state == "Vermont"]) + sum(cases[state == "Vermont"])),
+        state == "New Hampshire" & is.na(cases) & Sex == "Male" ~ 
+          1385 * sum(cases[state == "Vermont" & Sex == "Male"]) / 
+          (sum(hiv_msm_prev0$cases[hiv_msm_prev0$state == "Vermont"]) + sum(cases[state == "Vermont"])),
+        TRUE ~ cases) )   %>%
+    filter(!is.na(cases)) -> hiv_het_prev 
+ 
+ hiv_msm_prev0 %>%
+   mutate(cases = case_when(
+     state == "New Hampshire" & is.na(cases)  ~ 
+       sum(cases[state == "Vermont"]) / 
+       (sum(cases[state == "Vermont"]) + sum(hiv_het_prev$cases[hiv_het_prev$state == "Vermont"]) ) ,
+     TRUE ~ cases)) %>%
+   filter(!is.na(cases)) -> hiv_msm_prev 
 
 
-# read_excel(here("data/AtlasPlusTableData_hivdiag_2019_age_state_msm.xlsx"), skip=10) %>%
-#   mutate(cases = as.numeric(gsub(",", "", Cases))) %>%
-#   mutate(state = gsub("[[:punct:]]", "", Geography)) %>%
-#   select(state, cases, `Transmission Category`, `Age Group`, FIPS) %>%
-#   filter(`Transmission Category` == "Other")  -> other_msm_test
+## DIAGNOSIS DATA 
+  # cdc hiv pwid data
+  read_csv("~/prep_need/data/AtlasPlusTableData_hivdiag_pwid.csv", skip=8) %>%
+    filter(Year == "2022" | Year == "2021" | Year ==  "2020 (COVID-19 Pandemic)") %>%
+    mutate(
+      cases = as.numeric(gsub(",", "", Cases)),
+      state = gsub("[[:punct:]]", "", Geography)) %>%
+    dplyr::select(state, cases, FIPS) %>%
+    group_by(state, FIPS) %>%
+    summarize(cases = sum(cases, na.rm = TRUE)) %>%
+    ungroup() %>%
+    filter( FIPS<60) %>%
+    filter(!is.na(cases)) -> hiv_pwid_diag
+ 
+## VIRAL SUPPRESSION   
+  
+  read_csv("~/prep_need/data/AtlasPlusTableData_vs_state_female_trnsm.csv", skip=9) %>%
+    filter(Year=="2022") %>%
+    mutate(vsupp_cases = as.numeric(gsub(",", "", Cases)),
+           vsupp_perc = as.numeric(Percent)/100,
+           state = gsub("[[:punct:]]", "", Geography),
+           trans_cat = `Transmission Category`,
+           trans_cat = case_when(
+             trans_cat == "Heterosexual contact" ~ "wsm",
+             trans_cat == "Injection drug use" ~ "pwid",
+             FALSE ~ trans_cat)) %>% 
+    filter(trans_cat != "Other") %>%
+    filter( FIPS<60) %>%
+    mutate( vsupp_perc = case_when(
+      is.na(vsupp_perc) & trans_cat == "pwid" ~ median(vsupp_perc[trans_cat == "pwid"], na.rm=T),
+      is.na(vsupp_perc) & trans_cat == "wsm"  ~ median(vsupp_perc[trans_cat == "wsm"], na.rm=T) ,
+      TRUE ~ vsupp_perc )) %>%
+    dplyr::select(state,  FIPS, Sex, trans_cat,vsupp_perc)  -> hiv_f_trnsm_vsuppr 
+  
+  
+  read_csv("~/prep_need/data/AtlasPlusTableData_vs_state_male_trnsm.csv", skip=9) %>%
+    filter(Year=="2022") %>%
+    mutate(vsupp_cases = as.numeric(gsub(",", "", Cases)),
+           vsupp_pop = as.numeric(gsub(",", "", Population)),
+           vsupp_perc = as.numeric(Percent)/100,
+           state = gsub("[[:punct:]]", "", Geography),
+           trans_cat = `Transmission Category`,
+           trans_cat = case_when(
+             trans_cat == "Male-to-male sexual contact" ~ "msm",   
+             trans_cat == "Male-to-male sexual contact and injection drug use" ~ "msm",
+             trans_cat == "Heterosexual contact" ~ "msw",
+             trans_cat == "Injection drug use" ~ "pwid",
+             FALSE ~ trans_cat)) %>% # leaves "other" out
+    filter(trans_cat != "Other") %>%
+    group_by(state, FIPS, trans_cat, Sex) %>%
+    summarize(vsupp_perc = sum(vsupp_cases) / sum(vsupp_pop)) %>%
+    ungroup() %>%
+    filter( FIPS<60) %>%
+    mutate( vsupp_perc = case_when(
+      is.na(vsupp_perc) & trans_cat == "msm" ~ median(vsupp_perc[trans_cat == "msm"], na.rm=T),
+      is.na(vsupp_perc) & trans_cat == "pwid" ~ median(vsupp_perc[trans_cat == "pwid"], na.rm=T),
+      is.na(vsupp_perc) & trans_cat == "msw" ~ median(vsupp_perc[trans_cat == "msw"], na.rm=T),
+      TRUE ~ vsupp_perc )) %>%
+    dplyr::select(state,  FIPS, Sex, trans_cat, vsupp_perc)  -> hiv_m_trnsm_vsuppr 
+  
 
-read_excel(here("data/AtlasPlusTableData_hivdiag_2019_age_state_het.xlsx"), skip=10) %>%
-  mutate(cases = as.numeric(gsub(",", "", Cases))) %>%
-  mutate(state = gsub("[[:punct:]]", "", Geography)) %>%
-  select(state, cases, `Transmission Category`, `Age Group`, Sex, FIPS) %>%
-  filter(`Transmission Category` == "Heterosexual contact" |
-           `Transmission Category` ==   "Injection drug use")  %>%
-  mutate( agecat = ifelse(`Age Group` == "13-24" | `Age Group` =="25-34" | `Age Group` == "35-44", "younger", "older")) %>%
-  rename(Age.Group = `Age Group`) %>%
-  rename(transcat = `Transmission Category`) -> hiv_age_het_diag
-
-# this is awkward
-hiv_age_het_diag_13_17 <- hiv_age_het_diag_18_24 <- hiv_age_het_diag[hiv_age_het_diag$Age.Group=="13-24",] 
-hiv_age_het_diag_13_17$Age.Group <- "13-17"
-hiv_age_het_diag_18_24$Age.Group <- "18-24"
-hiv_age_het_diag <- rbind(hiv_age_het_diag,hiv_age_het_diag_13_17, hiv_age_het_diag_18_24)
-
-
-# HIV viral suppression
-read_excel(here("data/AtlasPlusTableData_treat_2019_state_age.xlsx"), skip=9) %>%
-  mutate(vsupp_cases = as.numeric(gsub(",", "", Cases))) %>%
-  mutate(vsupp_perc = as.numeric(Percent)/100) %>%
-  mutate(state = gsub("[[:punct:]]", "", Geography)) %>%
-  select(state, vsupp_cases, vsupp_perc, Indicator, Sex, `Age Group`, FIPS) %>%
-  filter(Indicator == "HIV viral suppression")  %>%
-  mutate( agecat = ifelse(`Age Group` == "13-24" | `Age Group` =="25-34" | `Age Group` == "35-44", "younger", "older")) %>%
-  rename(Age.Group = `Age Group`) %>%
-  mutate(vsupp_perc = ifelse(is.na(vsupp_perc), median(vsupp_perc, na.rm=T), vsupp_perc))-> hiv_vsuppr
-
-# this is awkward
-hiv_vsuppr_13_17 <- hiv_vsuppr_18_24 <- hiv_vsuppr[hiv_vsuppr$Age.Group=="13-24",] 
-hiv_vsuppr_13_17$Age.Group <- "13-17"
-hiv_vsuppr_18_24$Age.Group <- "18-24"
-hiv_vsuppr <- rbind(hiv_vsuppr,hiv_vsuppr_13_17, hiv_vsuppr_18_24)
-
-
-
+## POPULATION SIZE  
 # denominator by state
 # pop_asr <- read_csv(here("data/acs5_state_sex_age_race.csv"))
 # pop_as <- read_csv(here("data/acs5_state_sex_age.csv"))
- pop <- pop_fun(2019) # this is similar to PUMS
+# pop <- pop_fun(2019) # this is v. similar to PUMS
 
-pop$m %>%
+# write.csv(pop$m,    here("output_data/pop_m.csv"), row.names = FALSE)
+# write.csv(pop$f,    here("output_data/pop_f.csv"), row.names = FALSE)
+
+pop.m0 <- (read_csv("~/prep_need/output_data/pop_m.csv"))
+pop.f0 <- (read_csv("~/prep_need/output_data/pop_f.csv"))
+
+pop.m0 %>%
   left_join(msmpr, by = ("state") ) %>%
-  pivot_longer(cols = c("13-24","13-17","18-24", "25-34", "35-44", "45-54", "55+")) %>%
+  pivot_longer(cols = c("13-24", "25-34", "35-44", "45-54", "55+")) %>%
   mutate( msm = value * prev_extract) %>%
   mutate( msw = value * (1-prev_extract)) %>%
   mutate( agecat = ifelse(name == "18-24" | name == "13-17" | name =="25-34" | name == "35-44", "younger", "older")) %>%
   rename(`Age.Group` = name) %>%
-  group_by(FIPS, state, `Age.Group`) %>%
-  summarize(msm = sum(msm),
-         msw = sum(msw)) %>%
-  ungroup() %>%
   group_by(FIPS, state) %>%
- mutate(msm_denom = sum(msm),
-        msw_denom = sum(msw)) -> pop.m.all #   
+  summarize(msm_denom = sum(msm),
+            msw_denom = sum(msw)) %>%
+  ungroup() -> pop.m.all   
 
-pop$f %>%
-  pivot_longer(cols = c("13-24","13-17","18-24", "25-34", "35-44", "45-54", "55+")) %>%
+pop.f0 %>%
+  pivot_longer(cols = c("13-24", "25-34", "35-44", "45-54", "55+")) %>%
   mutate( agecat = ifelse(name == "13-17" | name == "18-24" | name =="25-34" | name == "35-44", "younger", "older")) %>%
   rename(`Age.Group` = name) %>%
  # group_by(FIPS, state, agecat) %>%
-  group_by(FIPS, state, `Age.Group`) %>%
-  summarize(wsm = sum(value)) %>%
-  ungroup() %>%
   group_by(FIPS, state) %>%
-  mutate(wsm_denom = sum(wsm)) -> pop.f.all
+  summarize(wsm_denom = sum(value)) %>%
+  ungroup()  -> pop.f.all
 
-# pop.f.all$wsm_denom <- pop.f.all$wsm
-# 
-# pop.f.all$wsm_denom[pop.f.all$Age.Group=="13-17"] <- pop.f.all$wsm[pop.f.all$Age.Group=="13-24"]
-# pop.f.all$wsm_denom[pop.f.all$Age.Group=="18-24"] <- pop.f.all$wsm[pop.f.all$Age.Group=="13-24"]
+###############################################################
+## COMBINING DATA
 
-
-hiv_age_het_prev  %>%
+hiv_het_prev  %>%
   filter(Sex != "Female") %>% # PARTNER pool prevalence 
-  left_join(hiv_age_het_diag[hiv_age_het_diag$Sex !="Female",] , by = c("FIPS", "Age.Group", "transcat", "agecat")) %>%
-#  group_by(state.x, FIPS, agecat, `Transmission Category`) %>%
-  group_by(state.x, FIPS, transcat) %>%
-  mutate(pr.num = sum(cases.x),
-        di.num = sum(cases.y)) %>%
-  ungroup()  %>%
-  left_join(pop.m.all, by = c("FIPS",  "Age.Group")) %>%
-  mutate(prev = pr.num/ msw_denom) %>% # 13-24 years as denominator for adolescents
-  mutate(susc = msw-pr.num) %>%
-  mutate(diag = di.num/ susc) %>%
-  filter(transcat != "Injection drug use" ) %>%
-  filter(!is.na(Age.Group)) %>%
- # select(FIPS, state.x, agecat, prev, diag, msw) %>%
-  select(FIPS, state.x, Age.Group, prev, diag, msw) %>%
-  left_join(hiv_vsuppr[hiv_vsuppr$Sex!="Female",], by = c("FIPS", "Age.Group")) %>%
-  mutate(wsm_prev_min = prev * 0.9,
+  left_join(pop.m.all, by = c("FIPS",  "state")) %>%
+  mutate(prev = cases/ msw_denom) %>% 
+  left_join(hiv_f_trnsm_vsuppr[hiv_f_trnsm_vsuppr$trans_cat == "wsm",], by = c("FIPS", "state")) %>%
+  mutate(wsm_prev_min = prev,
          wsm_prev_max = prev * 2,
          wsm_vsupp_min = vsupp_perc *0.9,
          wsm_vsupp_max = ifelse(vsupp_perc *1.1> 0.99, 0.99, vsupp_perc *1.1)) %>% 
-  select(FIPS, state, Age.Group, wsm_prev_min, wsm_prev_max, wsm_vsupp_min, wsm_vsupp_max) %>%
-  arrange(FIPS, Age.Group) -> pop.wsm
+  dplyr::select(FIPS, state,  wsm_prev_min, wsm_prev_max, wsm_vsupp_min, wsm_vsupp_max) %>%
+  arrange(FIPS) -> pop.wsm
 
-hiv_age_het_prev  %>%
+hiv_het_prev  %>%
   filter(Sex != "Male") %>% # PARTNER pool prevalence 
-  left_join(hiv_age_het_diag[hiv_age_het_diag$Sex !="Male",] , by = c("FIPS", "Age.Group", "transcat", "agecat")) %>%
- # group_by(state.x, FIPS, agecat, `Transmission Category`) %>%
-  group_by(state.x, FIPS, transcat) %>%
-  mutate(pr.num = sum(cases.x),
-            di.num = sum(cases.y)) %>%
+  group_by(state, FIPS, trans_cat) %>%
+  mutate(pr.num = sum(cases)) %>%
   ungroup()  %>%
-  left_join(pop.f.all, by = c("FIPS", "Age.Group")) %>%
-  mutate(prev = pr.num/ wsm_denom) %>%
-  mutate(susc = wsm-pr.num) %>%
-  mutate(diag = di.num/ susc) %>%
-  filter(transcat != "Injection drug use" ) %>%
-  filter(!is.na(Age.Group)) %>%
-  select(FIPS, state.x, Age.Group, prev, diag, wsm) %>%
-  left_join(hiv_vsuppr[hiv_vsuppr$Sex!="Male",], by = c("FIPS", "Age.Group")) %>%
+  left_join(pop.f.all, by = c("FIPS",  "state")) %>%
+  mutate(prev = pr.num/ wsm_denom,
+         trans_cat = "msw",
+         Sex = "Male")  %>%
+  left_join(hiv_m_trnsm_vsuppr[hiv_m_trnsm_vsuppr$trans_cat == "msw",], by = c("FIPS","state","trans_cat")) %>%
   mutate(msw_prev_min = prev ,
          msw_prev_max = prev * 2,
          msw_vsupp_min = vsupp_perc *0.9,
          msw_vsupp_max = ifelse(vsupp_perc *1.1> 0.99, 0.99, vsupp_perc *1.1)) %>% 
-  select(FIPS, state, Age.Group, msw_prev_min, msw_prev_max, msw_vsupp_min, msw_vsupp_max) %>%
-  arrange(FIPS, Age.Group) -> pop.msw
+  dplyr::select(FIPS, state, msw_prev_min, msw_prev_max, msw_vsupp_min, msw_vsupp_max) %>%
+  arrange(FIPS) -> pop.msw
 
-hiv_age_msm_prev  %>%
-  left_join(hiv_age_msm_diag, by = c("FIPS", "state", "Age.Group", "transcat", "agecat"))  %>%
- # group_by(state.x, FIPS, agecat) %>% # attribute all to MSM contact (combines IDU and MSM)
-  group_by(state, FIPS) %>% # attribute all to MSM contact (combines IDU and MSM)
-  mutate(pr.num = sum(cases.x),
-            di.num = sum(cases.y)) %>%
+hiv_msm_prev  %>%
+  group_by(state, FIPS) %>% 
+  mutate(pr.num = sum(cases)) %>%
   ungroup()  %>%
-  left_join(pop.m.all, by = c("FIPS", "Age.Group")) %>%
+  left_join(pop.m.all, by = c("FIPS", "state")) %>%
   mutate(prev = pr.num/ msm_denom) %>%
   mutate(susc = msm_denom-pr.num) %>%
-  mutate(diag = di.num/ susc)  %>%
-  filter(!is.na(Age.Group)) %>%
-  select(FIPS, state.x, Age.Group, prev, diag, msm) %>%
-  left_join(hiv_vsuppr[hiv_vsuppr$Sex=="Male",], by = c("FIPS", "Age.Group")) %>%
-  mutate(msm_prev_min = prev ,
+  left_join(hiv_m_trnsm_vsuppr[hiv_m_trnsm_vsuppr$trans_cat == "msm",], by = c("FIPS", "state", "trans_cat")) %>%
+  mutate(msm_prev_min = prev *0.8,
          msm_prev_max = prev * 2,
          msm_vsupp_min = vsupp_perc *0.9,
          msm_vsupp_max = ifelse(vsupp_perc *1.1> 0.99, 0.99, vsupp_perc *1.1)) %>% 
-  select(FIPS, state, Age.Group, msm_prev_min, msm_prev_max, msm_vsupp_min, msm_vsupp_max) %>%
-  arrange(FIPS, Age.Group)-> pop.msm
+  dplyr::select(FIPS, state,  msm_prev_min, msm_prev_max, msm_vsupp_min, msm_vsupp_max) %>%
+  arrange(FIPS)-> pop.msm
+
+rbind(pop.m0, pop.f0) %>%
+  mutate(pop =  `18-24`+ `25-34`+ `35-44`) %>%
+  group_by(state, FIPS) %>%
+    summarize(pop=sum(pop)) %>%
+  ungroup() %>%
+  dplyr::select(FIPS, state, pop) %>%
+  mutate(pwid_pop = 0.0146*pop,
+         trans_cat = "pwid") %>%
+  left_join(hiv_m_trnsm_vsuppr[hiv_m_trnsm_vsuppr$trans_cat == "pwid",], by = c("FIPS", "state", "trans_cat")) %>%
+  left_join(hiv_pwid_diag, by = c("FIPS", "state")) %>%
+  mutate(
+         prev = cases/pwid_pop,
+         pwid_prev_min = prev ,
+         pwid_prev_max = prev * 2,
+         pwid_vsupp_min = vsupp_perc *0.9,
+         pwid_vsupp_max = ifelse(vsupp_perc *1.1> 0.99, 0.99, vsupp_perc *1.1)) %>% 
+  dplyr::select(-pop) -> pop.pwid
+
+## this is calculated for the ll function [ pwid ]
+pop.f0 %>%
+  mutate(pop = `18-24`+ `25-34`+ `35-44`) %>%
+  dplyr::select(state, FIPS, pop) -> pop.f.18_44
+
+pop.m0 %>%
+  mutate(pop = `18-24`+ `25-34`+ `35-44`) %>%
+  dplyr::select(state, FIPS, pop) -> pop.m.18_44
+
+###################
 
 pop.msm %>%
-  left_join(pop.msw, by = c("FIPS", "state", "Age.Group")) %>%
-  left_join(pop.wsm, by = c("FIPS", "state", "Age.Group")) %>%
-  filter(Age.Group=="55+") %>%
-  select(-Age.Group) %>% 
-  relocate(msm_prev_min, msm_prev_max, wsm_prev_min, wsm_prev_max, msw_prev_min, msw_prev_max, msm_vsupp_min, msm_vsupp_max, wsm_vsupp_min, wsm_vsupp_max, msw_vsupp_min, msw_vsupp_max) -> pars_state
+  left_join(pop.msw, by = c("FIPS", "state")) %>%
+  left_join(pop.wsm, by = c("FIPS", "state")) %>%
+  left_join(pop.pwid, by = c("FIPS", "state")) %>%
+  relocate(msm_prev_min, msm_prev_max, wsm_prev_min, wsm_prev_max, msw_prev_min, msw_prev_max, pwid_prev_min, pwid_prev_max, 
+           msm_vsupp_min, msm_vsupp_max, wsm_vsupp_min, wsm_vsupp_max, msw_vsupp_min, msw_vsupp_max, pwid_vsupp_min, pwid_vsupp_max) %>%
+  filter(state != "Puerto Rico") -> pars_state
 
-
-
-################### MSM
-# hivdat, beta0, nact, safe, safe_eff, contact
-# 
-# pop.msm$bact <- par$base_case[par$params == "msm.bact"]
-# pop.msm$bact_min <- par$base_min[par$params == "msm.bact"]
-# pop.msm$bact_max <- par$base_max[par$params == "msm.bact"]
-# # pop.msm$bact_pair <- par$base_case[par$params == "msm.bact_pair"]
-# pop.msm$cond_eff <- par$base_case[par$params == "msm.cond_eff"]
-# pop.msm$cond_eff_min <- par$base_min[par$params == "msm.cond_eff"]
-# pop.msm$cond_eff_max <- par$base_max[par$params == "msm.cond_eff"]
-# 
-# pop.msm$cond[pop.msm$`Age.Group` == "13-17"]   <- par$base_case[par$params == "msm.cond0"]
-# pop.msm$cond[pop.msm$`Age.Group` == "18-24"]   <- par$base_case[par$params == "msm.cond1"]
-# pop.msm$cond[pop.msm$`Age.Group` == "13-24"]   <- par$base_case[par$params == "msm.cond1"]
-# pop.msm$cond[pop.msm$`Age.Group` == "25-34"]   <- par$base_case[par$params == "msm.cond2"]
-# pop.msm$cond[pop.msm$`Age.Group` == "35-44"]   <- par$base_case[par$params == "msm.cond3"]
-# pop.msm$cond[pop.msm$`Age.Group` == "45-54"]   <- par$base_case[par$params == "msm.cond4"]
-# pop.msm$cond[pop.msm$`Age.Group` == "55+"]     <- par$base_case[par$params == "msm.cond5"]
-# 
-# pop.msm$cond_min[pop.msm$`Age.Group` == "13-17"]   <- par$base_min[par$params == "msm.cond0"]
-# pop.msm$cond_min[pop.msm$`Age.Group` == "18-24"]   <- par$base_min[par$params == "msm.cond1"]
-# pop.msm$cond_min[pop.msm$`Age.Group` == "13-24"]   <- par$base_min[par$params == "msm.cond1"]
-# pop.msm$cond_min[pop.msm$`Age.Group` == "25-34"]   <- par$base_min[par$params == "msm.cond2"]
-# pop.msm$cond_min[pop.msm$`Age.Group` == "35-44"]   <- par$base_min[par$params == "msm.cond3"]
-# pop.msm$cond_min[pop.msm$`Age.Group` == "45-54"]   <- par$base_min[par$params == "msm.cond4"]
-# pop.msm$cond_min[pop.msm$`Age.Group` == "55+"]     <- par$base_min[par$params == "msm.cond5"]
-# 
-# pop.msm$cond_max[pop.msm$`Age.Group` == "13-17"]   <- par$base_max[par$params == "msm.cond0"]
-# pop.msm$cond_max[pop.msm$`Age.Group` == "18-24"]   <- par$base_max[par$params == "msm.cond1"]
-# pop.msm$cond_max[pop.msm$`Age.Group` == "13-24"]   <- par$base_max[par$params == "msm.cond1"]
-# pop.msm$cond_max[pop.msm$`Age.Group` == "25-34"]   <- par$base_max[par$params == "msm.cond2"]
-# pop.msm$cond_max[pop.msm$`Age.Group` == "35-44"]   <- par$base_max[par$params == "msm.cond3"]
-# pop.msm$cond_max[pop.msm$`Age.Group` == "45-54"]   <- par$base_max[par$params == "msm.cond4"]
-# pop.msm$cond_max[pop.msm$`Age.Group` == "55+"]     <- par$base_max[par$params == "msm.cond5"]
-# 
-# pop.msm$contact[pop.msm$`Age.Group` == "13-17"]   <- par$base_case[par$params == "msm.contact0"]
-# pop.msm$contact[pop.msm$`Age.Group` == "18-24"]   <- par$base_case[par$params == "msm.contact1"]
-# pop.msm$contact[pop.msm$`Age.Group` == "13-24"]   <- par$base_case[par$params == "msm.contact1"]
-# pop.msm$contact[pop.msm$`Age.Group` == "25-34"]   <- par$base_case[par$params == "msm.contact2"]
-# pop.msm$contact[pop.msm$`Age.Group` == "35-44"]   <- par$base_case[par$params == "msm.contact3"]
-# pop.msm$contact[pop.msm$`Age.Group` == "45-54"]   <- par$base_case[par$params == "msm.contact4"]
-# pop.msm$contact[pop.msm$`Age.Group` == "55+"]     <- par$base_case[par$params == "msm.contact5"]
-# 
-# pop.msm$contact_min[pop.msm$`Age.Group` == "13-17"]   <- par$base_min[par$params == "msm.contact0"]
-# pop.msm$contact_min[pop.msm$`Age.Group` == "18-24"]   <- par$base_min[par$params == "msm.contact1"]
-# pop.msm$contact_min[pop.msm$`Age.Group` == "13-24"]   <- par$base_min[par$params == "msm.contact1"]
-# pop.msm$contact_min[pop.msm$`Age.Group` == "25-34"]   <- par$base_min[par$params == "msm.contact2"]
-# pop.msm$contact_min[pop.msm$`Age.Group` == "35-44"]   <- par$base_min[par$params == "msm.contact3"]
-# pop.msm$contact_min[pop.msm$`Age.Group` == "45-54"]   <- par$base_min[par$params == "msm.contact4"]
-# pop.msm$contact_min[pop.msm$`Age.Group` == "55+"]     <- par$base_min[par$params == "msm.contact5"]
-# 
-# pop.msm$contact_max[pop.msm$`Age.Group` == "13-17"]   <- par$base_max[par$params == "msm.contact0"]
-# pop.msm$contact_max[pop.msm$`Age.Group` == "18-24"]   <- par$base_max[par$params == "msm.contact1"]
-# pop.msm$contact_max[pop.msm$`Age.Group` == "13-24"]   <- par$base_max[par$params == "msm.contact1"]
-# pop.msm$contact_max[pop.msm$`Age.Group` == "25-34"]   <- par$base_max[par$params == "msm.contact2"]
-# pop.msm$contact_max[pop.msm$`Age.Group` == "35-44"]   <- par$base_max[par$params == "msm.contact3"]
-# pop.msm$contact_max[pop.msm$`Age.Group` == "45-54"]   <- par$base_max[par$params == "msm.contact4"]
-# pop.msm$contact_max[pop.msm$`Age.Group` == "55+"]     <- par$base_max[par$params == "msm.contact5"]
-# 
-# # pop.msm$cond_pair <- par$base_case[par$params == "msw.cond_pair"]
-# 
-# pop.msm$nact   <- par$base_case[par$params == "msm.nact"]
-# pop.msm$nact_min   <- par$base_min[par$params == "msm.nact"]
-# pop.msm$nact_max   <- par$base_max[par$params == "msm.nact"]
-# 
-# ################### WSM
-# # hivdat, beta0, nact, safe, safe_eff, contact
-#  
-# pop.wsm$bact <- par$base_case[par$params == "wsm.bact"]
-# pop.wsm$bact_min <- par$base_min[par$params == "wsm.bact"]
-# pop.wsm$bact_max <- par$base_max[par$params == "wsm.bact"]
-# # pop.wsm$bact_pair <- par$base_case[par$params == "wsm.bact_pair"]
-# pop.wsm$cond_eff <- par$base_case[par$params == "wsm.cond_eff"]
-# pop.wsm$cond_eff_min <- par$base_min[par$params == "wsm.cond_eff"]
-# pop.wsm$cond_eff_max <- par$base_max[par$params == "wsm.cond_eff"]
-
-# pop.wsm$cond[pop.wsm$agecat == "older"]   <- par$base_case[par$params == "wsm.cond_older"]
-# pop.wsm$cond[pop.wsm$agecat == "younger"] <- par$base_case[par$params == "wsm.cond_younger"]
-# pop.wsm$cond_pair <- par$base_case[par$params == "msw.cond_pair"]
-# 
-# pop.wsm$nact   <- par$base_case[par$params == "wsm.nact"]
-# pop.wsm$nact_min    <- par$base_min [par$params == "wsm.nact"]
-# pop.wsm$nact_max   <- par$base_max[par$params == "wsm.nact"]
-# 
-# pop.wsm$cond[pop.wsm$`Age.Group` == "13-17"]   <- par$base_case[par$params == "wsm.cond0"]
-# pop.wsm$cond[pop.wsm$`Age.Group` == "18-24"]   <- par$base_case[par$params == "wsm.cond1"]
-# pop.wsm$cond[pop.wsm$`Age.Group` == "13-24"]   <- par$base_case[par$params == "wsm.cond1"]
-# pop.wsm$cond[pop.wsm$`Age.Group` == "25-34"]   <- par$base_case[par$params == "wsm.cond2"]
-# pop.wsm$cond[pop.wsm$`Age.Group` == "35-44"]   <- par$base_case[par$params == "wsm.cond3"]
-# pop.wsm$cond[pop.wsm$`Age.Group` == "45-54"]   <- par$base_case[par$params == "wsm.cond4"]
-# pop.wsm$cond[pop.wsm$`Age.Group` == "55+"]     <- par$base_case[par$params == "wsm.cond5"]
-# 
-# pop.wsm$cond_min[pop.wsm$`Age.Group` == "13-17"]   <- par$base_min[par$params == "wsm.cond0"]
-# pop.wsm$cond_min[pop.wsm$`Age.Group` == "18-24"]   <- par$base_min[par$params == "wsm.cond1"]
-# pop.wsm$cond_min[pop.wsm$`Age.Group` == "13-24"]   <- par$base_min[par$params == "wsm.cond1"]
-# pop.wsm$cond_min[pop.wsm$`Age.Group` == "25-34"]   <- par$base_min[par$params == "wsm.cond2"]
-# pop.wsm$cond_min[pop.wsm$`Age.Group` == "35-44"]   <- par$base_min[par$params == "wsm.cond3"]
-# pop.wsm$cond_min[pop.wsm$`Age.Group` == "45-54"]   <- par$base_min[par$params == "wsm.cond4"]
-# pop.wsm$cond_min[pop.wsm$`Age.Group` == "55+"]     <- par$base_min[par$params == "wsm.cond5"]
-# 
-# pop.wsm$cond_max[pop.wsm$`Age.Group` == "13-17"]   <- par$base_max[par$params == "wsm.cond0"]
-# pop.wsm$cond_max[pop.wsm$`Age.Group` == "18-24"]   <- par$base_max[par$params == "wsm.cond1"]
-# pop.wsm$cond_max[pop.wsm$`Age.Group` == "13-24"]   <- par$base_max[par$params == "wsm.cond1"]
-# pop.wsm$cond_max[pop.wsm$`Age.Group` == "25-34"]   <- par$base_max[par$params == "wsm.cond2"]
-# pop.wsm$cond_max[pop.wsm$`Age.Group` == "35-44"]   <- par$base_max[par$params == "wsm.cond3"]
-# pop.wsm$cond_max[pop.wsm$`Age.Group` == "45-54"]   <- par$base_max[par$params == "wsm.cond4"]
-# pop.wsm$cond_max[pop.wsm$`Age.Group` == "55+"]     <- par$base_max[par$params == "wsm.cond5"]
-# 
-# pop.wsm$contact[pop.wsm$`Age.Group` == "13-17"]   <- par$base_case[par$params == "wsm.contact0"]
-# pop.wsm$contact[pop.wsm$`Age.Group` == "18-24"]   <- par$base_case[par$params == "wsm.contact1"]
-# pop.wsm$contact[pop.wsm$`Age.Group` == "13-24"]   <- par$base_case[par$params == "wsm.contact1"]
-# pop.wsm$contact[pop.wsm$`Age.Group` == "25-34"]   <- par$base_case[par$params == "wsm.contact2"]
-# pop.wsm$contact[pop.wsm$`Age.Group` == "35-44"]   <- par$base_case[par$params == "wsm.contact3"]
-# pop.wsm$contact[pop.wsm$`Age.Group` == "45-54"]   <- par$base_case[par$params == "wsm.contact4"]
-# pop.wsm$contact[pop.wsm$`Age.Group` == "55+"]     <- par$base_case[par$params == "wsm.contact5"]
-# 
-# pop.wsm$contact_min[pop.wsm$`Age.Group` == "13-17"]   <- par$base_min[par$params == "wsm.contact0"]
-# pop.wsm$contact_min[pop.wsm$`Age.Group` == "18-24"]   <- par$base_min[par$params == "wsm.contact1"]
-# pop.wsm$contact_min[pop.wsm$`Age.Group` == "13-24"]   <- par$base_min[par$params == "wsm.contact1"]
-# pop.wsm$contact_min[pop.wsm$`Age.Group` == "25-34"]   <- par$base_min[par$params == "wsm.contact2"]
-# pop.wsm$contact_min[pop.wsm$`Age.Group` == "35-44"]   <- par$base_min[par$params == "wsm.contact3"]
-# pop.wsm$contact_min[pop.wsm$`Age.Group` == "45-54"]   <- par$base_min[par$params == "wsm.contact4"]
-# pop.wsm$contact_min[pop.wsm$`Age.Group` == "55+"]     <- par$base_min[par$params == "wsm.contact5"]
-# 
-# pop.wsm$contact_max[pop.wsm$`Age.Group` == "13-17"]   <- par$base_max[par$params == "wsm.contact0"]
-# pop.wsm$contact_max[pop.wsm$`Age.Group` == "18-24"]   <- par$base_max[par$params == "wsm.contact1"]
-# pop.wsm$contact_max[pop.wsm$`Age.Group` == "13-24"]   <- par$base_max[par$params == "wsm.contact1"]
-# pop.wsm$contact_max[pop.wsm$`Age.Group` == "25-34"]   <- par$base_max[par$params == "wsm.contact2"]
-# pop.wsm$contact_max[pop.wsm$`Age.Group` == "35-44"]   <- par$base_max[par$params == "wsm.contact3"]
-# pop.wsm$contact_max[pop.wsm$`Age.Group` == "45-54"]   <- par$base_max[par$params == "wsm.contact4"]
-# pop.wsm$contact_max[pop.wsm$`Age.Group` == "55+"]     <- par$base_max[par$params == "wsm.contact5"]
-# 
-# ################### MSW
-# # hivdat, beta0, nact, safe, safe_eff, contact
-# 
-# pop.msw$bact <- par$base_case[par$params == "msw.bact"]
-# 
-# pop.msw$bact_min <- par$base_min[par$params == "msw.bact"]
-# pop.msw$bact_max <- par$base_max[par$params == "msw.bact"]
-# # pop.msw$bact_pair <- par$base_case[par$params == "msw.bact_pair"]
-# pop.msw$cond_eff <- par$base_case[par$params == "msw.cond_eff"]
-# pop.msw$cond_eff_min <- par$base_min[par$params == "msw.cond_eff"]
-# pop.msw$cond_eff_max <- par$base_max[par$params == "msw.cond_eff"]
-# 
-# #pop.msw$cond_pair <- par$base_case[par$params == "msw.cond_pair"]
-# 
-# pop.msw$nact   <- par$base_case[par$params == "msw.nact"]
-# pop.msw$nact_min   <- par$base_min[par$params == "msw.nact"]
-# pop.msw$nact_max   <- par$base_max[par$params == "msw.nact"]
-# 
-# pop.msw$cond[pop.msw$`Age.Group` == "13-17"]   <- par$base_case[par$params == "msw.cond0"]
-# pop.msw$cond[pop.msw$`Age.Group` == "18-24"]   <- par$base_case[par$params == "msw.cond1"]
-# pop.msw$cond[pop.msw$`Age.Group` == "13-24"]   <- par$base_case[par$params == "msw.cond1"]
-# pop.msw$cond[pop.msw$`Age.Group` == "25-34"]   <- par$base_case[par$params == "msw.cond2"]
-# pop.msw$cond[pop.msw$`Age.Group` == "35-44"]   <- par$base_case[par$params == "msw.cond3"]
-# pop.msw$cond[pop.msw$`Age.Group` == "45-54"]   <- par$base_case[par$params == "msw.cond4"]
-# pop.msw$cond[pop.msw$`Age.Group` == "55+"]     <- par$base_case[par$params == "msw.cond5"]
-# 
-# pop.msw$cond_min[pop.msw$`Age.Group` == "13-17"]   <- par$base_min[par$params == "msw.cond0"]
-# pop.msw$cond_min[pop.msw$`Age.Group` == "18-24"]   <- par$base_min[par$params == "msw.cond1"]
-# pop.msw$cond_min[pop.msw$`Age.Group` == "13-24"]   <- par$base_min[par$params == "msw.cond1"]
-# pop.msw$cond_min[pop.msw$`Age.Group` == "25-34"]   <- par$base_min[par$params == "msw.cond2"]
-# pop.msw$cond_min[pop.msw$`Age.Group` == "35-44"]   <- par$base_min[par$params == "msw.cond3"]
-# pop.msw$cond_min[pop.msw$`Age.Group` == "45-54"]   <- par$base_min[par$params == "msw.cond4"]
-# pop.msw$cond_min[pop.msw$`Age.Group` == "55+"]     <- par$base_min[par$params == "msw.cond5"]
-# 
-# pop.msw$cond_max[pop.msw$`Age.Group` == "13-17"]   <- par$base_max[par$params == "msw.cond0"]
-# pop.msw$cond_max[pop.msw$`Age.Group` == "18-24"]   <- par$base_max[par$params == "msw.cond1"]
-# pop.msw$cond_max[pop.msw$`Age.Group` == "13-24"]   <- par$base_max[par$params == "msw.cond1"]
-# pop.msw$cond_max[pop.msw$`Age.Group` == "25-34"]   <- par$base_max[par$params == "msw.cond2"]
-# pop.msw$cond_max[pop.msw$`Age.Group` == "35-44"]   <- par$base_max[par$params == "msw.cond3"]
-# pop.msw$cond_max[pop.msw$`Age.Group` == "45-54"]   <- par$base_max[par$params == "msw.cond4"]
-# pop.msw$cond_max[pop.msw$`Age.Group` == "55+"]     <- par$base_max[par$params == "msw.cond5"]
-# 
-# pop.msw$contact[pop.msw$`Age.Group` == "13-17"]   <- par$base_case[par$params == "msw.contact0"]
-# pop.msw$contact[pop.msw$`Age.Group` == "18-24"]   <- par$base_case[par$params == "msw.contact1"]
-# pop.msw$contact[pop.msw$`Age.Group` == "13-24"]   <- par$base_case[par$params == "msw.contact1"]
-# pop.msw$contact[pop.msw$`Age.Group` == "25-34"]   <- par$base_case[par$params == "msw.contact2"]
-# pop.msw$contact[pop.msw$`Age.Group` == "35-44"]   <- par$base_case[par$params == "msw.contact3"]
-# pop.msw$contact[pop.msw$`Age.Group` == "45-54"]   <- par$base_case[par$params == "msw.contact4"]
-# pop.msw$contact[pop.msw$`Age.Group` == "55+"]     <- par$base_case[par$params == "msw.contact5"]
-# 
-# pop.msw$contact_min[pop.msw$`Age.Group` == "13-17"]   <- par$base_min[par$params == "msw.contact0"]
-# pop.msw$contact_min[pop.msw$`Age.Group` == "18-24"]   <- par$base_min[par$params == "msw.contact1"]
-# pop.msw$contact_min[pop.msw$`Age.Group` == "13-24"]   <- par$base_min[par$params == "msw.contact1"]
-# pop.msw$contact_min[pop.msw$`Age.Group` == "25-34"]   <- par$base_min[par$params == "msw.contact2"]
-# pop.msw$contact_min[pop.msw$`Age.Group` == "35-44"]   <- par$base_min[par$params == "msw.contact3"]
-# pop.msw$contact_min[pop.msw$`Age.Group` == "45-54"]   <- par$base_min[par$params == "msw.contact4"]
-# pop.msw$contact_min[pop.msw$`Age.Group` == "55+"]     <- par$base_min[par$params == "msw.contact5"]
-# 
-# pop.msw$contact_max[pop.msw$`Age.Group` == "13-17"]   <- par$base_max[par$params == "msw.contact0"]
-# pop.msw$contact_max[pop.msw$`Age.Group` == "18-24"]   <- par$base_max[par$params == "msw.contact1"]
-# pop.msw$contact_max[pop.msw$`Age.Group` == "13-24"]   <- par$base_max[par$params == "msw.contact1"]
-# pop.msw$contact_max[pop.msw$`Age.Group` == "25-34"]   <- par$base_max[par$params == "msw.contact2"]
-# pop.msw$contact_max[pop.msw$`Age.Group` == "35-44"]   <- par$base_max[par$params == "msw.contact3"]
-# pop.msw$contact_max[pop.msw$`Age.Group` == "45-54"]   <- par$base_max[par$params == "msw.contact4"]
-# pop.msw$contact_max[pop.msw$`Age.Group` == "55+"]     <- par$base_max[par$params == "msw.contact5"]
 

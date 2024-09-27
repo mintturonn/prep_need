@@ -58,7 +58,25 @@ pwsex_sir <- function(pnat, pr.msm, pr.wsm, pr.msw, vs.msm, vs.wsm, vs.msw) {
 
 ############### PWID model
 
+pwid_model <- function(pnat, pr.pwid, vs.pwid){#n, r, c, b, p, t) {
+  
+  # n: average number of injections annually
+  # r: proportion of shared-injections
+  # c: average number of sharing partners annually
+  # bact: probability of HIV transmission per shared-injection
+  # p: HIV prevalence among PWID adjusted for knowledge of status
+  # t: proportion of viral suppression among HIV-positive PWID
+  
+  If <- 1 - ((1 - pr.pwid) + pr.pwid * (1 -pnat["pwid.bact"]*(1-vs.pwid))^((pnat["pwid.n.f"] / pnat["pwid.c"]) * pnat["pwid.r.f"]))^pnat["pwid.c"]
+  Im <- 1 - ((1 - pr.pwid) + pr.pwid * (1 -pnat["pwid.bact"]*(1-vs.pwid))^((pnat["pwid.n.m"] / pnat["pwid.c"]) * pnat["pwid.r.m"]))^pnat["pwid.c"]
 
+  names(If) <- substr(names(If), 1, nchar(names(Im))-nchar("_pr.pwid"))
+  names(Im) <- substr(names(Im), 1, nchar(names(Im)) - nchar("_pr.pwid"))
+  
+  return(list(pwid_f = If,
+              pwid_m = Im ))
+  
+}
 
 
 ###############IMIS version
@@ -102,16 +120,7 @@ pwsex_imis <- function(pnat, pr.msm, pr.wsm, pr.msw, vs.msm, vs.wsm, vs.msw) {
   return(list(msm.inc=msm.inc, wsm.inc=wsm.inc, msw.inc=msw.inc))
 }
 
-pwid_model <- function(n, r, c, b, p, t) {
-  # n: average number of injections annually
-  # r: proportion of shared-injections
-  # c: average number of sharing partners annually
-  # b: probability of HCV transmission per shared-injection
-  # p: HIV prevalence among PWID adjusted for knowledge of status
-  # t: proportion of viral suppression among HIV-positive PWID
-  I <- 1 - ((1 - p) + p * (1 - (1 - t) * b)^((n / c) * r))^c
-  return(I)
-}
+
 
 statefun_min <- function(dat, rr_re) {
   
