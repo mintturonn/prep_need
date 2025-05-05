@@ -27,6 +27,8 @@ pop_asr %>%
   rename(pop = n) %>%
   select(-n_se) -> asr_wsm
 
+## --> TO DO (this should account for the prevalence in pop!)
+## same for in SIR function ! 
 ##########################
 
 for (i in 1:nrow(pnat)){
@@ -104,7 +106,7 @@ for (i in 1:nrow(pnat)){
     mutate(
       sex ="Female",
       age = "All",
-      prep.ind = pnat0["prop.pwid.f"]*pnat0["pwid.r.m"],
+      prep.ind = pnat0["prop.pwid.f"]*pnat0["pwid.r.f"],
       race = "All") %>%
     filter(!is.na(inc)) -> pwid_f0  
 
@@ -195,6 +197,7 @@ pwid_f %>%
     .fns = ~ .x * pop, 
     .names = "tot.{col}")) -> pwid_f_out
 
+
 pwid_m %>%
   left_join(pop.m.18_44, by=c("state")) %>%
   mutate(trnsm = "pwid") %>%
@@ -231,6 +234,7 @@ rbind(msm_out, wsm_out, msw_out, pwid_f_out, pwid_m_out) %>%
   facet_wrap(~calibration, ncol=2) + xlim(c(0, NA)) +
   theme(
     panel.grid.major = element_blank(), 
+    panel.grid.major.y = element_line(color = "black", size = 0.1),
     panel.grid.minor = element_blank(), 
     axis.line = element_line(color = "black") 
   ) -> p_st
