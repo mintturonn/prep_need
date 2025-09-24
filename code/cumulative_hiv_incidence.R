@@ -290,13 +290,13 @@ results %>%
     prep40 = ifelse(id2 == 1 , prepind, 0),
     prep001 = ifelse(id3 == 1 , prepind, 0),
     prep01  = ifelse(id4 == 1 , prepind, 0)) %>%
-  select(prep100, prep10, prep25, prep40, trnsm, simulation, state) -> test # %>%
+  select(prep100, prep10, prep25, prep40, prep001, prep01, trnsm, simulation, state, age, race, sex, pop) -> test # %>%
 
 test %>%
   group_by(trnsm, simulation) %>%
   summarize(sum_prep100= sum(prep100, na.rm=T),
             sum_prep10 = sum(prep10, na.rm=T),
-            sum_prep25 = sum(prep251, na.rm=T),
+            sum_prep25 = sum(prep25, na.rm=T),
             sum_prep40 = sum(prep40, na.rm=T),
             sum_prep001= sum(prep001, na.rm=T),
             sum_prep01 = sum(prep01, na.rm=T),
@@ -307,17 +307,14 @@ test %>%
     median_prep = mean(prep_value, na.rm = TRUE),
     lower_95 = quantile(prep_value, 0.025, na.rm = TRUE),
     upper_95 = quantile(prep_value, 0.975, na.rm = TRUE),
-    .groups = 'drop'
-  ) %>%
+    .groups = 'drop' ) %>%
   mutate(Allocation = recode(Allocation,
                             "sum_prep100" = "100% coverage (PrEP indicators)",
-                            "sum_prep10_1" = "Top 90%",
-                            "sum_prep25_1" = "100% coverage for top 75%",
-                            # "sum_prep25_2" = "100% for top 75% + 1% to bottom 25",
-                            # "sum_prep25_3" = "100% for top 75% + 10% to bottom 25",
-                            "sum_prep40_1" = "100% coverage for top 60%")) %>%
-                            # "sum_prep40_2" = "100% for top 60% + 1% to bottom 25",
-                            # "sum_prep40_3" = "100% for top 60% + 10% to bottom 25")) %>%
+                            "sum_prep10" = "Top 90% HIV infections",
+                            "sum_prep25" = "Top 75% HIV infections",
+                            "sum_prep40" = "Top 60% HIV infections",
+                            "sum_prep001" = ">=0.1% incidence",
+                            "sum_prep01" = ">=1% incidence")) %>%
  # filter(median_prep >0) %>%
   bind_rows(tibble(
     trnsm = c("pwid", "wsm", "msw", "msm"),
@@ -328,21 +325,19 @@ test %>%
   mutate(Allocation = factor(Allocation, 
                              levels = c("100% coverage (PrEP indicators)",
                                         "Cost-benefit estimate",
-                                        "100% coverage for top 90%", 
-                                        "100% coverage for top 75%", 
-                                        # "100% for top 75% + 1% to bottom 25", 
-                                        # "100% for top 75% + 10% to bottom 25",
-                                        "100% coverage for top 60%"))) %>%
-                                        # "100% for top 60% + 1% to bottom 25",
-                                        # "100% for top 60% + 10% to bottom 25"))) %>%
+                                        "Top 90% HIV infections", 
+                                        "Top 75% HIV infections", 
+                                        "Top 60% HIV infections",
+                                        ">=0.1% incidence",
+                                        ">=1% incidence" ))) %>%
   select(trnsm, Allocation, median_prep, lower_95, upper_95) %>%
   filter(Allocation != "100% coverage (PrEP indicators)") %>%
   ggplot(aes(x = trnsm, y = median_prep, fill = Allocation)) +
   geom_bar(stat = "identity", position = position_dodge(), width = 0.7) +
   geom_errorbar(aes(ymin = lower_95, ymax = upper_95), position = position_dodge(0.7),  width = 0.25) +
   labs(
-    x = "PrEP Allocation",
-    y = "Number who could benefit from PrEP") +
+    x = "Transmission risk group",
+    y = "Number of people") +
   theme_minimal() +
   theme(
     legend.position = "right",
@@ -354,8 +349,191 @@ test %>%
   scale_y_continuous(labels = comma) + 
   scale_fill_brewer(palette = "BrBG") -> p3
 
-ggsave(here("output_figures/epi-allocation.png"), plot = p3, width = 16, height =6, dpi = 300)
-
-
+ggsave(here("output_figures/epi-allocation-trnsm.png"), plot = p3, width = 16, height =6, dpi = 300)
 
 #####################
+## RACE/ETHNICITY
+
+test %>%
+  group_by(race, trnsm, simulation) %>%
+  summarize(sum_prep100= sum(prep100, na.rm=T),
+            sum_prep10 = sum(prep10, na.rm=T),
+            sum_prep25 = sum(prep25, na.rm=T),
+            sum_prep40 = sum(prep40, na.rm=T),
+            sum_prep001= sum(prep001, na.rm=T),
+            sum_prep01 = sum(prep01, na.rm=T),
+            sum_pop = sum(pop),
+            .groups = 'drop') %>%  
+  pivot_longer(cols = starts_with("sum_prep"), names_to = "Allocation", values_to = "prep_value") %>%
+  group_by(race, trnsm, Allocation) %>%
+  summarize(
+    median_prep = mean(prep_value, na.rm = TRUE),
+    lower_95 = quantile(prep_value, 0.025, na.rm = TRUE),
+    upper_95 = quantile(prep_value, 0.975, na.rm = TRUE),
+    pop = mean(sum_pop),
+    .groups = 'drop' ) %>%
+  filter(race != "All") %>% # PWID do not have R/E strata
+  mutate(Allocation = recode(Allocation,
+                             "sum_prep100" = "100% coverage (PrEP indicators)",
+                             "sum_prep10" = "Top 90% HIV infections",
+                             "sum_prep25" = "Top 75% HIV infections",
+                             "sum_prep40" = "Top 60% HIV infections",
+                             "sum_prep001" = ">=0.1% incidence",
+                             "sum_prep01" = ">=1% incidence")) %>%
+  # filter(median_prep >0) %>%
+  # bind_rows(tibble(
+  #   trnsm = c("pwid", "wsm", "msw", "msm"),
+  #   Allocation = c("Cost-benefit estimate"),
+  #   median_prep = c(187500, 382500, 150000, 1582500),
+  #   lower_95 = c(187500, 382500, 150000, 1582500),
+  #   upper_95 = c(187500, 382500, 150000, 1582500) )) %>%
+  mutate(Allocation = factor(Allocation, 
+                             levels = c("100% coverage (PrEP indicators)",
+                                        #"Cost-benefit estimate",
+                                        "Top 90% HIV infections", 
+                                        "Top 75% HIV infections", 
+                                        "Top 60% HIV infections",
+                                        ">=0.1% incidence",
+                                        ">=1% incidence" ))) %>%
+  select(race, trnsm, Allocation, median_prep, lower_95, upper_95, pop) %>%
+  filter(Allocation != "100% coverage (PrEP indicators)") %>%
+  ggplot(aes(x = race, y = 100*median_prep/pop, fill = Allocation)) +
+  geom_bar(stat = "identity", position = position_dodge(), width = 0.7) +
+  geom_errorbar(aes(ymin = 100*lower_95/pop, ymax = 100*upper_95/pop), position = position_dodge(0.7),  width = 0.25) +
+  facet_wrap(~trnsm) + 
+  labs(
+    x = "Race/ethnicity",
+    y = "Benefit from PrEP per 100 persons") +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.border = element_blank(),
+    panel.background = element_rect(fill = "white"),
+    #  plot.background = element_rect(fill = "white") 
+  ) +
+  scale_y_continuous(labels = comma) + 
+  scale_fill_brewer(palette = "BrBG") -> p4
+
+ggsave(here("output_figures/epi-allocation-race-rate.png"), plot = p4, width = 16, height =6, dpi = 300)
+
+#####################
+## STATE
+
+test %>%
+  group_by(state, trnsm, simulation) %>%
+  summarize(sum_prep100= sum(prep100, na.rm=T),
+            sum_prep10 = sum(prep10, na.rm=T),
+            sum_prep25 = sum(prep25, na.rm=T),
+            sum_prep40 = sum(prep40, na.rm=T),
+            sum_prep001= sum(prep001, na.rm=T),
+            sum_prep01 = sum(prep01, na.rm=T),
+            sum_pop = sum(pop),
+            .groups = 'drop') %>%  
+  pivot_longer(cols = starts_with("sum_prep"), names_to = "Allocation", values_to = "prep_value") %>%
+  group_by(state, trnsm, Allocation) %>%
+  summarize(
+    median_prep = mean(prep_value, na.rm = TRUE),
+    lower_95 = quantile(prep_value, 0.025, na.rm = TRUE),
+    upper_95 = quantile(prep_value, 0.975, na.rm = TRUE),
+    pop = mean(sum_pop),
+    .groups = 'drop' ) %>%
+  mutate(Allocation = recode(Allocation,
+                             "sum_prep100" = "100% coverage (PrEP indicators)",
+                             "sum_prep10" = "Top 90% HIV infections",
+                             "sum_prep25" = "Top 75% HIV infections",
+                             "sum_prep40" = "Top 60% HIV infections",
+                             "sum_prep001" = ">=0.1% incidence",
+                             "sum_prep01" = ">=1% incidence")) %>%
+  mutate(Allocation = factor(Allocation, 
+                             levels = c("100% coverage (PrEP indicators)",
+                                        #"Cost-benefit estimate",
+                                        "Top 90% HIV infections", 
+                                        "Top 75% HIV infections", 
+                                        "Top 60% HIV infections",
+                                        ">=0.1% incidence",
+                                        ">=1% incidence" ))) %>%
+  select(state, trnsm, Allocation, median_prep, lower_95, upper_95, pop) %>%
+  filter(Allocation != "100% coverage (PrEP indicators)") %>%
+  ggplot() + # y=reorder(y=state, median_prep)
+  geom_point(aes(y=reorder(state, median_prep),  x=100*median_prep/pop, color=Allocation), position=position_dodge2(width = 1)) +
+  geom_linerange(aes(y=reorder(state, median_prep), xmin=100*lower_95/pop, xmax=100*upper_95/pop, color=Allocation), 
+                    position=position_dodge2(width = 1), size = 1, alpha = 8/10) +
+  # geom_bar(stat = "identity", position = position_dodge(), width = 0.7) +
+  # geom_errorbar(aes(ymin = lower_95, ymax = upper_95), position = position_dodge(0.7),  width = 0.25) +
+  facet_wrap(~trnsm, ncol=4) + 
+   labs(
+    x = "Race/ethnicity",
+    y = "Number of people") +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.border = element_blank(),
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "white") 
+  ) +
+  scale_x_continuous(labels = comma) + 
+  scale_fill_brewer(palette = "BrBG") -> p5
+
+ggsave(here("output_figures/epi-allocation-state.png"), plot = p5, width = 18, height =12, dpi = 300)
+
+#####################
+## AGE
+
+test %>%
+  group_by(age, trnsm, simulation) %>%
+  summarize(sum_prep100= sum(prep100, na.rm=T),
+            sum_prep10 = sum(prep10, na.rm=T),
+            sum_prep25 = sum(prep25, na.rm=T),
+            sum_prep40 = sum(prep40, na.rm=T),
+            sum_prep001= sum(prep001, na.rm=T),
+            sum_prep01 = sum(prep01, na.rm=T),
+            sum_pop = sum(pop),
+            .groups = 'drop') %>%  
+  pivot_longer(cols = starts_with("sum_prep"), names_to = "Allocation", values_to = "prep_value") %>%
+  group_by(age, trnsm, Allocation) %>%
+  summarize(
+    median_prep = mean(prep_value, na.rm = TRUE),
+    lower_95 = quantile(prep_value, 0.025, na.rm = TRUE),
+    upper_95 = quantile(prep_value, 0.975, na.rm = TRUE),
+    pop = mean(sum_pop),
+    .groups = 'drop' ) %>%
+  filter(age != "All") %>% # PWID do not have age strata
+  mutate(Allocation = recode(Allocation,
+                             "sum_prep100" = "100% coverage (PrEP indicators)",
+                             "sum_prep10" = "Top 90% HIV infections",
+                             "sum_prep25" = "Top 75% HIV infections",
+                             "sum_prep40" = "Top 60% HIV infections",
+                             "sum_prep001" = ">=0.1% incidence",
+                             "sum_prep01" = ">=1% incidence")) %>%
+  mutate(Allocation = factor(Allocation, 
+                             levels = c("100% coverage (PrEP indicators)",
+                                        #"Cost-benefit estimate",
+                                        "Top 90% HIV infections", 
+                                        "Top 75% HIV infections", 
+                                        "Top 60% HIV infections",
+                                        ">=0.1% incidence",
+                                        ">=1% incidence" ))) %>%
+  select(age, trnsm, Allocation, median_prep, lower_95, upper_95, pop) %>%
+  filter(Allocation != "100% coverage (PrEP indicators)") %>%
+  ggplot(aes(x = age, y = median_prep, fill = Allocation)) +
+  geom_bar(stat = "identity", position = position_dodge(), width = 0.7) +
+  geom_errorbar(aes(ymin = lower_95, ymax = upper_95), position = position_dodge(0.7),  width = 0.25) +
+  labs(
+    x = "Age",
+    y = "Number of people") +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.border = element_blank(),
+    panel.background = element_rect(fill = "white"),
+    #  plot.background = element_rect(fill = "white") 
+  ) +
+  facet_wrap(~trnsm, ncol=4) + 
+  scale_y_continuous(labels = comma) + 
+  scale_fill_brewer(palette = "BrBG") -> p4
+
+ggsave(here("output_figures/epi-allocation-race.png"), plot = p4, width = 16, height =6, dpi = 300)
+

@@ -63,7 +63,7 @@ for (i in 1:nrow(pnat)){
   as.data.frame(as.table(out$msm.inc)) %>%
     rename(state = Var1, race = Var2, age = Var3, inc = Freq) %>%
     mutate(prep.ind = case_when(
-      age == "13-24" ~ (7/12)*pr.prep.msm["prep.msm1"]+(5/12)*pnat0["prep.young"],
+      age == "13-24" ~ (7/12)*pr.prep.msm["prep.msm1"]+(5/12)*pnat0["prep.young"]*pr.prep.msm["prep.msm1"],
       age == "25-34" ~ pr.prep.msm["prep.msm2"],
       age == "35-44" ~ pr.prep.msm["prep.msm3"],
       age == "45-54" ~ pr.prep.msm["prep.msm4"],
@@ -73,7 +73,7 @@ for (i in 1:nrow(pnat)){
   as.data.frame(as.table(out$wsm.inc)) %>%
     rename(state = Var1, race = Var2, age = Var3, inc = Freq) %>%
     mutate(prep.ind = case_when(
-      age == "13-24" ~ (7/12)*pr.prep.wsm["prep.wsm1"]+(5/12)*pnat0["prep.young"],
+      age == "13-24" ~ (7/12)*pr.prep.wsm["prep.wsm1"]+(5/12)*pnat0["prep.young"]*pr.prep.wsm["prep.wsm1"],
       age == "25-34" ~ pr.prep.wsm["prep.wsm2"],
       age == "35-44" ~ pr.prep.wsm["prep.wsm3"],
       age == "45-54" ~ pr.prep.wsm["prep.wsm4"],
@@ -83,7 +83,7 @@ for (i in 1:nrow(pnat)){
   as.data.frame(as.table(out$msw.inc)) %>%
     rename(state = Var1, race = Var2, age = Var3, inc = Freq) %>%
     mutate(prep.ind = case_when(
-      age == "13-24" ~ (7/12)*pr.prep.msw["prep.msw1"]+(5/12)*pnat0["prep.young"],
+      age == "13-24" ~ (7/12)*pr.prep.msw["prep.msw1"]+(5/12)*pnat0["prep.young"]*pr.prep.msw["prep.msw1"],
       age == "25-34" ~ pr.prep.msw["prep.msw2"],
       age == "35-44" ~ pr.prep.msw["prep.msw3"],
       age == "45-54" ~ pr.prep.msw["prep.msw4"],

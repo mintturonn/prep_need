@@ -63,7 +63,7 @@ read_csv("~/prep_need/data/AtlasPlusTableData_hivprev_state_msm.csv", skip=10) %
  hiv_msm_prev0 %>%
    mutate(cases = case_when(
      state == "New Hampshire" & is.na(cases)  ~ 
-       sum(cases[state == "Vermont"]) / 
+       1385 * sum(cases[state == "Vermont"]) / 
        (sum(cases[state == "Vermont"]) + sum(hiv_het_prev$cases[hiv_het_prev$state == "Vermont"]) ) ,
      TRUE ~ cases)) %>%
    filter(!is.na(cases)) -> hiv_msm_prev 

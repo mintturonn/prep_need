@@ -37,7 +37,7 @@ pop_asr %>%
 
 
 # start_time <- Sys.time()  
-nsim <- 200000
+nsim <- 100000
 # Sys.time() - start_time
 
 priors <-  sample.prior(nsim, pars_nat, pars_state, id_beta, id_lnrm, id_gamma, id_nrm, id_unif, id_fixed)

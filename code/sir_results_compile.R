@@ -3,6 +3,13 @@
 #        rm(list = ls())
 #        .rs.restartR()
 
+library(tidyverse)
+library(readxl)
+library(here)
+
+source("~/prep_need/code/prep_model_sir_fun.R")
+source("~/prep_need/code/calibration_data.R")
+
 directory <- "~/prep_need/sir_results"
 files <- list.files(path = directory, pattern = "^sir_.*\\.RData$", full.names = TRUE)
 
@@ -37,16 +44,24 @@ for (file in files) {
 # prop_w <- ll_all / sum(ll_all)
 # hist(prop_w, breaks = nsim/10)
 # Resample based on the importance weights
+# 
 
+adjust_ll <- exp( ll_out_logs[,1]/10+   # age
+                    ll_out_logs[,2]/10+ # race
+                    ll_out_logs[,3]/30+ # trnsm
+                    ll_out_logs[,4]/20+ # age_msm
+                    ll_out_logs[,5]/20+  #state
+                    ll_out_logs[,6]/10+ # state_nd
+                    ll_out_logs[,7]/10+ # nat
+                    ll_out_logs[,8]/10)  # pwid
 
-adjust_ll <- exp( rowSums(ll_out_logs[,1:6]/20)+ll_out_logs[,7]/2+ll_out_logs[,8]/2) 
 prop_w <- adjust_ll / sum(adjust_ll)
 
 set.seed(0.1)
-sir_id <- sample(1:length(ll_all), size = 200, replace = TRUE, prob = prop_w)
+sir_id <- sample(1:length(ll_all), size = 400, replace = TRUE, prob = prop_w)
 table(sir_id)
 
-sir_ll <- ll_all[sir_id]
+sir_ll <- adjust_ll[sir_id]
 prop_w[sir_id]
 
 # hist(sir_ll, breaks =10)
@@ -60,6 +75,9 @@ vs.msm <-  st_msm_vs_all[sir_id,]
 vs.wsm <-  st_wsm_vs_all[sir_id,]
 vs.msw <-  st_msw_vs_all[sir_id,]
 vs.pwid <- st_pwid_vs_all[sir_id,]
+
+source("~/prep_need/code/calibration_figures.R")
+
 
 idp <- pnat[,1] >0.25
 pnat <- pnat [idp,]

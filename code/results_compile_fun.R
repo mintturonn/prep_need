@@ -1,8 +1,21 @@
 
+# Function to format numbers to three significant figures with commas
+format_sigfig <- function(x) {
+  formatted_number <- round(signif(x, digits = 3))  # Round after getting 3 significant digits
+  formatted <- format(formatted_number, big.mark = ",", scientific = FALSE, trim = TRUE)
+  return(formatted)
+}
+
+# Function to format numbers to three significant figures with commas using formatC
+format_sigfig2 <- function(x) {
+  formatted <-formatC(x, format = "f", big.mark = ",", digits = 0)
+  return(formatted)
+}
+
 # Function to calculate and append results
 calculate_and_append <- function(popinc_column, inc_column, prepind_column, sim_label) {
   temp <- rbind(msm_out, wsm_out, msw_out, pwid_f_out, pwid_m_out) %>%
-    select(trnsm, state, age, race, all_of(popinc_column), all_of(inc_column), all_of(prepind_column)) %>%
+    select(trnsm, state, age, race, sex, pop, all_of(popinc_column), all_of(inc_column), all_of(prepind_column)) %>%
     rename(popinc = !!sym(popinc_column), inc = !!sym(inc_column), prepind = !!sym(prepind_column)) %>%
     mutate(
       total_popinc = sum(popinc, na.rm = TRUE),
